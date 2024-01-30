@@ -141,7 +141,8 @@ def rcon_command_screen(screen: customtkinter.CTk, rcon_credentials: dict):
         width=315,
         height=480)
     screen.column_1.place(x=10, y=10)
-    rcon_send_command(screen.error_label, rcon_credentials, "Broadcast", message)
+    await rcon_send_command(screen.error_label, rcon_credentials, "Broadcast", message)
+
 
 def login_button_function(screen: customtkinter.CTk):
     screen.error_label.configure(text="")

@@ -6,6 +6,7 @@ import concurrent.futures
 import customtkinter
 import rcon
 from rcon.source import Client
+from rcon.source.proto import Packet
 
 from utils.pal_exceptions import *
 import config
@@ -22,7 +23,9 @@ __all__ = (
 class MyClient(Client):
 
     def read(self):
-        return None
+        with self._socket.makefile("rb") as file:
+            response = Packet.read(file)
+            return response
 
 
 valid_palword_commands = """
@@ -88,7 +91,7 @@ async def rcon_send_command(error_label: customtkinter.CTk, credentials: dict, c
         except asyncio.CancelledError:
             print("Task Cancelled")
         except Exception as err:
-            print(f"Unhandled Exception in {repr(rcon_send_command)}")
+            print(f"Unhandled Exception in {err}")
 
     loop = asyncio.get_event_loop()
     with concurrent.futures.ThreadPoolExecutor() as executor:
