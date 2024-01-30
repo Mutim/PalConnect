@@ -19,6 +19,12 @@ __all__ = (
 )
 
 
+class MyClient(Client):
+
+    def read(self):
+        return None
+
+
 valid_palword_commands = """
 /Shutdown {Seconds} {MessageText}	The server is shut down after the number of Seconds
 Will be notified of your MessageText.
@@ -65,7 +71,7 @@ async def rcon_send_command(error_label: customtkinter.CTk, credentials: dict, c
         print(arguments)
         try:
             print("Before RCON Package")
-            with Client(ipaddr, port, passwd=password) as client:
+            with MyClient(ipaddr, port, passwd=password) as client:
                 client.run(command, *arguments, encoding="ISO-8859-1")
 
             # print(response)
