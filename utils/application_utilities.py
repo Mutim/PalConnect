@@ -5,7 +5,7 @@ import concurrent.futures
 
 import customtkinter
 import rcon
-from rcon import Client
+from rcon.source import Client
 
 from utils.pal_exceptions import *
 import config
@@ -17,6 +17,7 @@ __all__ = (
     "center_window",
     "open_site"
 )
+
 
 valid_palword_commands = """
 /Shutdown {Seconds} {MessageText}	The server is shut down after the number of Seconds
@@ -60,11 +61,14 @@ async def rcon_send_command(error_label: customtkinter.CTk, credentials: dict, c
 
     def run_command():
         print("Starting Communication to Server")
+        print(command)
+        print(arguments)
         try:
+            print("Before RCON Package")
             with Client(ipaddr, port, passwd=password) as client:
-                response = client.run(command, *arguments, encoding="ISO-8859-1")
+                client.run(command, *arguments, encoding="ISO-8859-1")
 
-            print(response.encode('utf8'))
+            # print(response)
             print("Finished Communication to Server")
         except rcon.exceptions.WrongPassword as err:
             error_label.configure(text=f"[ Error ]\n{err}\n")
@@ -122,7 +126,9 @@ async def valid_input(screen: customtkinter.CTk, credentials: dict) -> bool:
             "password": credentials['password']}
         try:
             print("Sending Info command to server")
-            await rcon_send_command(screen, credentials, "Info")
+            message_raw = "Go forth, and multiply"
+            message = message_raw.replace(" ", "\u00A0")
+            await rcon_send_command(screen, credentials, "Broadcast", message)
             valid_cred.append(True)
         except rcon.exceptions.WrongPassword as err:
             screen.password_entry.delete(0, len(screen.password_entry.get()))
