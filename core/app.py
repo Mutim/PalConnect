@@ -121,7 +121,7 @@ class ServerConnectionScreen(customtkinter.CTk):
 def rcon_command_screen(screen: customtkinter.CTk, rcon_credentials: dict):
     """Main command screen for sending RCON commands. This is where all functionality lives"""
 
-    message_raw = "New RCON Connection Established"
+    message_raw = "test"
     message = message_raw.replace(" ", "\u00A0")
 
     screen.frame.destroy()
@@ -141,21 +141,22 @@ def rcon_command_screen(screen: customtkinter.CTk, rcon_credentials: dict):
         width=315,
         height=480)
     screen.column_1.place(x=10, y=10)
-    sending(screen, rcon_credentials, "Broadcast", message)
-    sending(screen, rcon_credentials, "ShowPlayers")
 
 
-def sending(screen: customtkinter.CTk, creds, command, *args):
+def sending(creds, command, *args):
 
     if not asyncio.get_event_loop().is_running():
         print("No event loop running")
-        asyncio.run(rcon_send_command(screen.error_label, creds, command, *args))
+        asyncio.run(rcon_send_command(creds, command, *args))
     else:
         print("Event loop running")
-        asyncio.create_task(rcon_send_command(screen.error_label, creds, command, *args))
+        asyncio.create_task(rcon_send_command(creds, command, *args))
 
 
 def login_button_function(screen: customtkinter.CTk):
+    async def run_login_handler():
+        await login_handler(screen, rcon_credentials)
+
     screen.error_label.configure(text="")
     screen.ipaddr_entry.configure(border_color=("#979DA2", "#565B5E"), placeholder_text='IP Address')
     screen.port_entry.configure(border_color=("#979DA2", "#565B5E"), placeholder_text='Port')
@@ -165,17 +166,18 @@ def login_button_function(screen: customtkinter.CTk):
         "password": screen.password_entry.get()
     }
 
-    if not asyncio.get_event_loop().is_running():
+    loop = asyncio.get_event_loop()
+
+    if not loop.is_running():
         print("No event loop running")
-        asyncio.run(login_handler(screen, rcon_credentials))
+        loop.run_until_complete(run_login_handler())
     else:
         print("Event loop running")
-        asyncio.create_task(login_handler(screen, rcon_credentials))
+        asyncio.create_task(run_login_handler())
 
 
 # Handles login asyncrounously. May move this functionality to a more general handler
 async def login_handler(screen, rcon_credentials):
-    print("Called login_handler")
     if await valid_input(screen, rcon_credentials):
         try:
             rcon_credentials = {
@@ -191,4 +193,3 @@ async def login_handler(screen, rcon_credentials):
             screen.error_label.configure(text=f"[ ERROR ]\n{err}")
     else:
         screen.login_button.configure(state="normal")
-        print("Cannot connect")

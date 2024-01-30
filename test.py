@@ -1,44 +1,26 @@
-import asyncio
-import time
+def break_message(message, max_length=40, ret="\n"):
+    result = []
+    current_line = ""
 
-async def func1():
-    print("Starting Asynchronous Operation")
-    num = 0
-    while num < 5:
-        num += 1
-        print(num)
-        await asyncio.sleep(1)
+    for word in message.split():
+        if len(current_line) + len(word) + 1 <= max_length:
+            current_line += f"{word} "
+        else:
+            result.append(current_line.strip())
+            current_line = f"{word} "
 
-
-async def func2():
-    num = 10
-    while num < 16:
-        num += 1
-        print(num)
-        await asyncio.sleep(2)
-
-
-def func3():
-    print("Starting Linear Operation")
-    num = 0
-    while num < 5:
-        num += 1
-        print(num)
-        time.sleep(2)
+    if current_line:
+        result.append(current_line.strip())
+    current = ""
+    for line in result:
+        current = f"{current + line}{ret}"
+    return current
 
 
-def func4():
-    num = 10
-    while num < 16:
-        num += 1
-        print(num)
-        time.sleep(2)
+def main():
+    message = "This is a very long message that will be returned if the message length is much much longer than the predetermined length of 40 characters. But it can be specified to use any return method, or character length"
+    print(break_message(message))
 
-
-async def main():
-    await asyncio.gather(func1(), func2())
-    func3()
-    func4()
 
 if __name__ == '__main__':
-    asyncio.run(main())
+    main()

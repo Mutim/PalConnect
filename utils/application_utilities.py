@@ -43,60 +43,57 @@ Will be notified of your MessageText.
 """
 
 
-# async def rcon_send_command(error_label: customtkinter.CTk, credentials: dict, command: str, *arguments: str):
-#     ipaddr = credentials['ipaddr']
-#     port = credentials['port']
-#     password = credentials['password']
-#     try:
-#         with Client(ipaddr, port, passwd=password) as client:
-#             response = client.run(command, *arguments, encoding="ISO-8859-1")
-#
-#         print(response.encode('utf8'))
-#     except rcon.exceptions.WrongPassword as err:
-#         error_label.configure(text=f"[ Error ]\n{err}\n")
-#         print(err)
-#     except rcon.exceptions.SessionTimeout as err:
-#         error_label.configure(text=f"[ Error ]\n{err}")
-#         print(err)
-#     except TimeoutError as err:
-#         error_label.configure(text=f"[ Error ]\n{err}\n")
-#         print(err)
-#     except Exception as err:
-#         print(f"Unhandled Exception in {repr(rcon_send_command)}")
-async def rcon_send_command(error_label: customtkinter.CTk, credentials: dict, command: str, *arguments: str):
+async def rcon_send_command(credentials: dict, command: str, *arguments: str) -> None:
+    """
+    Send an RCON command to a server.
+
+    Args:
+    - credentials (dict): Dictionary containing RCON connection details (ipaddr, port, password).
+    - command (str): RCON command to be executed.
+    - arguments (str): Additional arguments for the command.
+
+    Returns:
+    - bool: True if the command is successfully sent, False otherwise.
+    """
     ipaddr = credentials['ipaddr']
     port = credentials['port']
     password = credentials['password']
 
     def run_command():
-        print("Starting Communication to Server")
-        print(command)
-        print(arguments)
+        """
+        Internal function to execute the RCON command in a separate thread.
+        """
+        print(f"Starting Communication to Server...\nCommand: {command}\nArguments: {arguments}\n{credentials}")
         try:
-            print("Before RCON Package")
             with MyClient(ipaddr, port, passwd=password) as client:
                 request = Packet.make_command(command, *arguments, encoding="ISO-8859-1")
                 client.send(request)
 
-            # print(response)
-            print("Finished Communication to Server")
+            print(request)
+            print("Finished Communication to Server. Closing connection")
         except rcon.exceptions.WrongPassword as err:
-            error_label.configure(text=f"[ Error ]\n{err}\n")
-            print(err)
+            print(f"Wrong Password Supplied - {err}")
+            return False
         except rcon.exceptions.SessionTimeout as err:
-            error_label.configure(text=f"[ Error ]\n{err}")
-            print(err)
+            print(f"Session Timed Out - {err}")
+            return False
         except TimeoutError as err:
-            error_label.configure(text=f"[ Error ]\n{err}\n")
-            print(err)
-        except asyncio.CancelledError:
-            print("Task Cancelled")
+            print(f"Request Timed Out - {err}")
+            return False
+        except asyncio.CancelledError as err:
+            print(f"Request Cancelled - {err}")
+            return False
         except Exception as err:
-            print(f"Unhandled Exception in {err}")
+            print(f"Unhandled Exception: {err}")
+            return False
+        finally:
+            # May need to close connections...I dunno
+            pass
+
+        return True
 
     loop = asyncio.get_event_loop()
     with concurrent.futures.ThreadPoolExecutor() as executor:
-        print("Executing Run Command")
         try:
             await loop.run_in_executor(executor, run_command)
         except asyncio.CancelledError:
@@ -104,11 +101,31 @@ async def rcon_send_command(error_label: customtkinter.CTk, credentials: dict, c
 
 
 async def valid_input(screen: customtkinter.CTk, credentials: dict) -> bool:
-    """Test the connection to an RCON server. Returns True if connection can be made"""
-    print("Called valid_input")
+    """Test if the provided credentials were accurate, and of correct type.
+
+    Args:
+        screen (customtkinter.CTk): The main application window.
+        credentials (dict): A dictionary containing RCON login credentials.
+
+    Returns:
+        bool: True if a connection to the RCON server can be established, False otherwise.
+
+    This function performs several checks to validate the provided RCON credentials, including:
+    - Validating the IP address.
+    - Validating the port number.
+    - Sending an "Info" command to the server to check connectivity.
+    - Handling errors such as invalid IP, invalid port, wrong password, timeout, or general exceptions.
+
+    Note:
+    - The "Info" command is currently designed to check connectivity and will be enhanced in the future
+      when PalWorld fixes their RCON implementation.
+
+    - If all checks pass, the function returns True; otherwise, it returns False and updates the error labels
+      on the application screen accordingly.
+
+    """
     valid_cred = []
     try:
-        print("Try 1")
         a = is_valid_ip(credentials['ipaddr'])
         valid_cred.append(True)
     except InvalidIpAddress as err:
@@ -116,9 +133,8 @@ async def valid_input(screen: customtkinter.CTk, credentials: dict) -> bool:
         screen.ipaddr_entry.configure(border_color='#E53030', placeholder_text='Invalid IP Address')
         screen.error_label.configure(text=f"[ Error ]\nNot a Valid IP Address")
         valid_cred.append(False)
-        print("\nIP Address is invalid - Error Code")
+        print(f"\nIP Address is invalid - {err}")
     try:
-        print("Try 2")
         b = int(credentials['port'])
         valid_cred.append(True)
     except ValueError as err:
@@ -126,30 +142,35 @@ async def valid_input(screen: customtkinter.CTk, credentials: dict) -> bool:
         screen.port_entry.configure(border_color='#E53030', placeholder_text='Invalid Port Number')
         screen.error_label.configure(text=f"[ Error ]\nInvalid Port Number")
         valid_cred.append(False)
+        print(f"Invalid Port Number - {err}")
 
     if all(valid_cred):
-        print("IP and Port Valid. Checking Creds")
         credentials = {
             "ipaddr": credentials['ipaddr'],
             "port": int(credentials['port']),
             "password": credentials['password']}
         try:
-            print("Sending Info command to server")
-            await rcon_send_command(screen, credentials, "Info")
-            valid_cred.append(True)
+            # TODO: In the future, when PalWorld fixes their RCON, this will provide server info, as well as checking a connection.
+            if await rcon_send_command(credentials, "Info"):
+                valid_cred.append(True)
+            else:
+                screen.error_label.configure(text="[ Error ]\nCannot connect. Check your login credentials")
+                valid_cred.append(False)
         except rcon.exceptions.WrongPassword as err:
             screen.password_entry.delete(0, len(screen.password_entry.get()))
             screen.password_entry.configure(border_color='#E53030', placeholder_text='Invalid Password')
             screen.error_label.configure(text="[ Error ]\nInvalid Password")
             valid_cred.append(False)
             print("\nPassword is incorrect - Error code")
-        except TimeoutError as err:
+        except (TimeoutError, OSError) as err:
+            print(f"Connection error: {err}")
             screen.error_label.configure(text=f"[ Error ]\nRequest timed out. Are you using the correct credentials?")
             valid_cred.append(False)
+
         except Exception as err:
             screen.error_label.configure(text=f"[ General Error ]\nPlease report this on Github.")
             valid_cred.append(False)
-            print(err)
+            print(f"**Log This** - {err}")
 
     if all(valid_cred):
         return True
@@ -158,6 +179,18 @@ async def valid_input(screen: customtkinter.CTk, credentials: dict) -> bool:
 
 
 def is_valid_ip(ip) -> bool:
+    """
+    Check if the given IP address is valid.
+
+    Parameters:
+    - ip (str): The IP address to be validated.
+
+    Returns:
+    - bool: True if the IP address is valid, False otherwise.
+
+    Raises:
+    - InvalidIpAddress: If the IP address is not in a valid format.
+    """
     expression = "^((25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\\.){3}(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])$"
     if re.search(expression, ip):
         return True
@@ -174,5 +207,36 @@ def center_window(screen: customtkinter.CTk, width: int, height: int, scale_fact
     return f"{width}x{height}+{x}+{y}"
 
 
+def break_message(message, max_length=40, ret="\n") -> str:
+    """
+    Break a message into lines, ensuring each line is no longer than the specified maximum length.
+
+    Parameters:
+    - message (str): The input message to be broken into lines.
+    - max_length (int): The maximum length for each line (default is 40).
+    - ret (str): The string used to separate lines (default is "\n").
+
+    Returns:
+    - str: The formatted message with lines no longer than max_length.
+    """
+    result = []
+    current_line = ""
+
+    for word in message.split():
+        if len(current_line) + len(word) + 1 <= max_length:
+            current_line += f"{word} "
+        else:
+            result.append(current_line.strip())
+            current_line = f"{word} "
+
+    if current_line:
+        result.append(current_line.strip())
+    current = ""
+    for line in result:
+        current = f"{current + line}{ret}"
+    return current
+
+
 def open_site(url):
+    """ Opens provided website """
     webbrowser.open_new(url)
