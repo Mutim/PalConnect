@@ -21,7 +21,7 @@ __all__ = (
 
 
 class MyClient(Client):
-
+    # Palworld does not respond, so was killing the program. Have to make our own
     def read(self):
         with self._socket.makefile("rb") as file:
             response = Packet.read(file)
@@ -75,7 +75,8 @@ async def rcon_send_command(error_label: customtkinter.CTk, credentials: dict, c
         try:
             print("Before RCON Package")
             with MyClient(ipaddr, port, passwd=password) as client:
-                client.run(command, *arguments, encoding="ISO-8859-1")
+                request = Packet.make_command(command, *arguments, encoding="ISO-8859-1")
+                client.send(request)
 
             # print(response)
             print("Finished Communication to Server")
@@ -134,9 +135,7 @@ async def valid_input(screen: customtkinter.CTk, credentials: dict) -> bool:
             "password": credentials['password']}
         try:
             print("Sending Info command to server")
-            message_raw = "Go forth, and multiply"
-            message = message_raw.replace(" ", "\u00A0")
-            await rcon_send_command(screen, credentials, "Broadcast", message)
+            await rcon_send_command(screen, credentials, "Info")
             valid_cred.append(True)
         except rcon.exceptions.WrongPassword as err:
             screen.password_entry.delete(0, len(screen.password_entry.get()))
