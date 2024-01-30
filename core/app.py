@@ -141,7 +141,18 @@ def rcon_command_screen(screen: customtkinter.CTk, rcon_credentials: dict):
         width=315,
         height=480)
     screen.column_1.place(x=10, y=10)
-    await rcon_send_command(screen.error_label, rcon_credentials, "Broadcast", message)
+    sending(screen.error_label, rcon_credentials, "Broadcast", message)
+
+
+def sending(screen: customtkinter.CTk, creds, command, *arguments):
+
+    if not asyncio.get_event_loop().is_running():
+        print("No event loop running")
+        asyncio.run(rcon_send_command(screen.error_label, creds, command, arguments))
+    else:
+        print("Event loop running")
+        asyncio.create_task(rcon_send_command(screen.error_label, creds, command, arguments))
+
 
 
 def login_button_function(screen: customtkinter.CTk):

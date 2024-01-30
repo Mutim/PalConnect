@@ -102,7 +102,6 @@ async def rcon_send_command(error_label: customtkinter.CTk, credentials: dict, c
             print("Task Cancelled (outside run_in_executor)")
 
 
-
 async def valid_input(screen: customtkinter.CTk, credentials: dict) -> bool:
     """Test the connection to an RCON server. Returns True if connection can be made"""
     print("Called valid_input")
