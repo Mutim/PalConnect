@@ -139,24 +139,63 @@ def rcon_command_screen(screen: customtkinter.CTk, rcon_credentials: dict):
     screen.column_1 = customtkinter.CTkFrame(
         master=screen.main_frame,
         width=315,
-        height=480)
+        height=460)
     screen.column_1.place(x=10, y=10)
+    screen.command_entry = customtkinter.CTkEntry(master=screen.column_1, width=220, placeholder_text='Command',
+                                                  border_color=("#979DA2", "#565B5E"))
+    screen.command_entry.place(x=5, y=5)
+    discord_button = customtkinter.CTkButton(master=screen.column_1, width=145, text="Send Command",
+                                             command=lambda: rcon_query_button_function(screen, rcon_credentials),
+                                             corner_radius=6)
+    discord_button.place(x=30, y=30)
 
 
 def sending(creds, command, *args):
+    async def run_sending():
+        if not asyncio.get_event_loop().is_running():
+            print("No event loop running")
+            await asyncio.run(async_send_command(creds, command, *args))
+        else:
+            print("Event loop running")
+            asyncio.create_task(async_send_command(creds, command, *args))
 
-    if not asyncio.get_event_loop().is_running():
-        print("No event loop running")
-        asyncio.run(rcon_send_command(creds, command, *args))
-    else:
-        print("Event loop running")
-        asyncio.create_task(rcon_send_command(creds, command, *args))
+    asyncio.run(run_sending())
+
+
+def rcon_query_button_function(screen, rcon_credentials):
+
+    # Move to config file
+    valid_commands = {
+        "Broadcast": "{MessageText}	Send message to all player in the server.",
+        "Info": "Returns server info",
+        "Shutdown": "{Seconds} {MessageText} The server will shut down after {Seconds}, and display {MessageText}",
+        "DoExit": "Force stop the server.",
+        "KickPlayer": "	Kick player from the server.",
+        "BanPlayer": "{SteamID}	BAN player from the server.",
+        "TeleportToPlayer": "{SteamID}	Teleport to current location of target player.",
+        "TeleportToMe": "{SteamID}	Target player teleport to your current location",
+        "ShowPlayers": "Show information on all connected players.",
+        "Save": "Save the world data.",
+        "Help": "Serve this page"
+    }
+    rcon_query = screen.command_entry.get()
+    try:
+        command, arguments = rcon_query.split(" ", maxsplit=1)
+        sending(rcon_credentials, command, arguments)
+        print(f"{command} {arguments}")
+    except ValueError as err:
+        if len(rcon_query) == 0:
+            print("Please enter a valid command")
+        elif rcon_query.split(" ")[0] not in valid_commands:
+            print("Command not valid. Type Help for info")
+        else:
+            sending(rcon_credentials, rcon_query)
 
 
 def login_button_function(screen: customtkinter.CTk):
+
     async def run_login_handler():
         await login_handler(screen, rcon_credentials)
-
     screen.error_label.configure(text="")
     screen.ipaddr_entry.configure(border_color=("#979DA2", "#565B5E"), placeholder_text='IP Address')
     screen.port_entry.configure(border_color=("#979DA2", "#565B5E"), placeholder_text='Port')
@@ -176,7 +215,7 @@ def login_button_function(screen: customtkinter.CTk):
         asyncio.create_task(run_login_handler())
 
 
-# Handles login asyncrounously. May move this functionality to a more general handler
+# Handles login asynchronously. May move this functionality to a more general handler
 async def login_handler(screen, rcon_credentials):
     if await valid_input(screen, rcon_credentials):
         try:
@@ -185,7 +224,7 @@ async def login_handler(screen, rcon_credentials):
                 "port": int(screen.port_entry.get()),
                 "password": screen.password_entry.get()
             }
-            screen.login_button.configure(state="disabled")
+
             rcon_command_screen(screen, rcon_credentials)
             print("Can connect")
         except TimeoutError as err:

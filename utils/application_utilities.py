@@ -12,10 +12,11 @@ from utils.pal_exceptions import *
 import config
 
 __all__ = (
-    "rcon_send_command",
+    "async_send_command",
     "valid_input",
     "is_valid_ip",
     "center_window",
+    "break_message",
     "open_site"
 )
 
@@ -28,22 +29,7 @@ class MyClient(Client):
             return response
 
 
-valid_palword_commands = """
-/Shutdown {Seconds} {MessageText}	The server is shut down after the number of Seconds
-Will be notified of your MessageText.
-/DoExit	Force stop the server.
-/Broadcast {MessageText}	Send message to all player in the server.
-/KickPlayer {SteamID}	Kick player from the server.
-/BanPlayer {SteamID}	BAN player from the server.
-/TeleportToPlayer {SteamID}	Teleport to current location of target player.
-/TeleportToMe {SteamID}	Target player teleport to your current location
-/ShowPlayers	Show information on all connected players.
-/Info	Show server information.
-/Save	Save the world data.
-"""
-
-
-async def rcon_send_command(credentials: dict, command: str, *arguments: str) -> None:
+async def async_send_command(credentials: dict, command: str, *arguments: str) -> None:
     """
     Send an RCON command to a server.
 
@@ -71,6 +57,7 @@ async def rcon_send_command(credentials: dict, command: str, *arguments: str) ->
 
             print(request)
             print("Finished Communication to Server. Closing connection")
+            return True
         except rcon.exceptions.WrongPassword as err:
             print(f"Wrong Password Supplied - {err}")
             return False
@@ -89,8 +76,6 @@ async def rcon_send_command(credentials: dict, command: str, *arguments: str) ->
         finally:
             # May need to close connections...I dunno
             pass
-
-        return True
 
     loop = asyncio.get_event_loop()
     with concurrent.futures.ThreadPoolExecutor() as executor:
@@ -124,6 +109,8 @@ async def valid_input(screen: customtkinter.CTk, credentials: dict) -> bool:
       on the application screen accordingly.
 
     """
+    screen.login_button.place_forget()
+
     valid_cred = []
     try:
         a = is_valid_ip(credentials['ipaddr'])
@@ -151,11 +138,8 @@ async def valid_input(screen: customtkinter.CTk, credentials: dict) -> bool:
             "password": credentials['password']}
         try:
             # TODO: In the future, when PalWorld fixes their RCON, this will provide server info, as well as checking a connection.
-            if await rcon_send_command(credentials, "Info"):
+            if await async_send_command(credentials, "Info"):
                 valid_cred.append(True)
-            else:
-                screen.error_label.configure(text="[ Error ]\nCannot connect. Check your login credentials")
-                valid_cred.append(False)
         except rcon.exceptions.WrongPassword as err:
             screen.password_entry.delete(0, len(screen.password_entry.get()))
             screen.password_entry.configure(border_color='#E53030', placeholder_text='Invalid Password')
@@ -164,14 +148,14 @@ async def valid_input(screen: customtkinter.CTk, credentials: dict) -> bool:
             print("\nPassword is incorrect - Error code")
         except (TimeoutError, OSError) as err:
             print(f"Connection error: {err}")
-            screen.error_label.configure(text=f"[ Error ]\nRequest timed out. Are you using the correct credentials?")
+            screen.error_label.configure(text="[ Error ]\nRequest timed out. Check your login credentials")
             valid_cred.append(False)
 
         except Exception as err:
             screen.error_label.configure(text=f"[ General Error ]\nPlease report this on Github.")
             valid_cred.append(False)
             print(f"**Log This** - {err}")
-
+    print(valid_cred)
     if all(valid_cred):
         return True
 
