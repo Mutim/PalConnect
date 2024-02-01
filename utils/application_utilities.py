@@ -29,7 +29,7 @@ class MyClient(Client):
             return response
 
 
-async def async_send_command(credentials: dict, command: str, *arguments: str) -> None:
+async def async_send_command(credentials: dict, command: str, *arguments: str) -> bool:
     """
     Send an RCON command to a server.
 
@@ -115,7 +115,7 @@ async def async_send_command(credentials: dict, command: str, *arguments: str) -
     loop = asyncio.get_event_loop()
     with concurrent.futures.ThreadPoolExecutor() as executor:
         try:
-            await loop.run_in_executor(executor, run_command)
+            return await loop.run_in_executor(executor, run_command)
         except asyncio.CancelledError:
             print("Task Cancelled (outside run_in_executor)")
 
@@ -137,9 +137,6 @@ async def valid_input(screen: customtkinter.CTk, credentials: dict) -> bool:
     - Handling errors such as invalid IP, invalid port, wrong password, timeout, or general exceptions.
 
     Note:
-    - The "Info" command is currently designed to check connectivity and will be enhanced in the future
-      when PalWorld fixes their RCON implementation.
-
     - If all checks pass, the function returns True; otherwise, it returns False and updates the error labels
       on the application screen accordingly.
 
@@ -173,10 +170,13 @@ async def valid_input(screen: customtkinter.CTk, credentials: dict) -> bool:
             "password": credentials['password']}
         try:
             result = await async_send_command(credentials, "Info")
+            print(f"Result is: {result}")
             if result:
                 valid_cred.append(True)
+                print("Appending True")
             else:
                 valid_cred.append(False)
+                print("Appending False")
         except rcon.exceptions.WrongPassword as err:
             screen.password_entry.delete(0, len(screen.password_entry.get()))
             screen.password_entry.configure(border_color='#E53030', placeholder_text='Invalid Password')
