@@ -38,16 +38,52 @@ async def async_send_command(credentials: dict, command: str, *arguments: str) -
     - command (str): RCON command to be executed.
     - arguments (str): Additional arguments for the command.
 
-    Returns:
-    - bool: True if the command is successfully sent, False otherwise.
+    Internal Functions:
+    - sanitize_input(c: str, args: tuple) -> tuple: Function to sanitize input, and verify that only correct commands are being served.
+    - run_command() -> None: Function that allows async operation of the RCON connection on a separate thread.
     """
     ipaddr = credentials['ipaddr']
     port = credentials['port']
     password = credentials['password']
 
-    def run_command():
+    def sanitize_input(c: str, args: tuple) -> tuple:
+        if c.lower() == "broadcast":
+            message_raw = args[0]
+            message = message_raw.replace(" ", "\u00A0")
+            if len(message) > 39:
+                message = break_message(message, max_length=39, ret="\n")  # Breaks message into 40 character long strings with newlines to fit in PalWorld chat
+            message = tuple([message])
+
+            return "Broadcast", message
+
+        elif c.lower() == "info":
+            return "Info", ""
+
+        elif c.lower() == "kickplayer":
+            return "KickPlayer", args
+
+        elif c.lower() == "shutdown":
+            message_raw = args[0]
+            message_split = message_raw.split(maxsplit=1)
+            time = message_split[0]
+            try:
+                time = int(time)
+            except ValueError:
+                print("Time value could not be converted to an integer")
+                return "Info", ""  # Returning info until we get a way to communicate
+            message = message_split[1].replace(" ", "\u00A0")
+            message = tuple([time + message])
+
+            return "Shutdown", message
+
+    command, arguments = sanitize_input(command, arguments)
+
+    def run_command() -> bool:
         """
         Internal function to execute the RCON command in a separate thread.
+
+        Returns:
+        - bool: True if the command is successfully sent, False otherwise.
         """
         print(f"Starting Communication to Server...\nCommand: {command}\nArguments: {arguments}\n{credentials}")
         try:
@@ -59,8 +95,7 @@ async def async_send_command(credentials: dict, command: str, *arguments: str) -
             print("Finished Communication to Server. Closing connection")
             return True
         except rcon.exceptions.WrongPassword as err:
-            print(f"Wrong Password Supplied - {err}")
-            return False
+            raise rcon.exceptions.WrongPassword
         except rcon.exceptions.SessionTimeout as err:
             print(f"Session Timed Out - {err}")
             return False
@@ -109,7 +144,7 @@ async def valid_input(screen: customtkinter.CTk, credentials: dict) -> bool:
       on the application screen accordingly.
 
     """
-    screen.login_button.place_forget()
+    # screen.login_button.place_forget()
 
     valid_cred = []
     try:
@@ -137,9 +172,11 @@ async def valid_input(screen: customtkinter.CTk, credentials: dict) -> bool:
             "port": int(credentials['port']),
             "password": credentials['password']}
         try:
-            # TODO: In the future, when PalWorld fixes their RCON, this will provide server info, as well as checking a connection.
-            if await async_send_command(credentials, "Info"):
+            result = await async_send_command(credentials, "Info")
+            if result:
                 valid_cred.append(True)
+            else:
+                valid_cred.append(False)
         except rcon.exceptions.WrongPassword as err:
             screen.password_entry.delete(0, len(screen.password_entry.get()))
             screen.password_entry.configure(border_color='#E53030', placeholder_text='Invalid Password')
@@ -163,18 +200,6 @@ async def valid_input(screen: customtkinter.CTk, credentials: dict) -> bool:
 
 
 def is_valid_ip(ip) -> bool:
-    """
-    Check if the given IP address is valid.
-
-    Parameters:
-    - ip (str): The IP address to be validated.
-
-    Returns:
-    - bool: True if the IP address is valid, False otherwise.
-
-    Raises:
-    - InvalidIpAddress: If the IP address is not in a valid format.
-    """
     expression = "^((25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\\.){3}(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])$"
     if re.search(expression, ip):
         return True

@@ -59,7 +59,7 @@ class ServerConnectionScreen(customtkinter.CTk):
             width=320,
             height=360,
             corner_radius=15)
-        self.frame.place(relx=0.5, rely=0.5, anchor=tkinter.CENTER)
+        self.frame.place(relx=0.5, rely=0.5, anchor="center")
 
         self.label_2 = customtkinter.CTkLabel(
             master=self.frame,
@@ -121,9 +121,6 @@ class ServerConnectionScreen(customtkinter.CTk):
 def rcon_command_screen(screen: customtkinter.CTk, rcon_credentials: dict):
     """Main command screen for sending RCON commands. This is where all functionality lives"""
 
-    message_raw = "test"
-    message = message_raw.replace(" ", "\u00A0")
-
     screen.frame.destroy()
     screen.main_frame = customtkinter.CTkFrame(
         master=screen.label_1,
@@ -131,30 +128,50 @@ def rcon_command_screen(screen: customtkinter.CTk, rcon_credentials: dict):
         height=480,
         corner_radius=15,
         border_width=2,
+        background_corner_colors=("#d4dbe3", "#d4dbe3", "#6c7850", "#455c42"),
         border_color=("#3E454A", "#949A9F"),
         bg_color="#DEDEDE")
-
     screen.main_frame.place(relx=0.5, rely=0.5, anchor=tkinter.CENTER)
 
+    # Column 1
     screen.column_1 = customtkinter.CTkFrame(
         master=screen.main_frame,
         width=315,
-        height=460)
+        height=460,
+        corner_radius=6)
     screen.column_1.place(x=10, y=10)
-    screen.command_entry = customtkinter.CTkEntry(master=screen.column_1, width=220, placeholder_text='Command',
-                                                  border_color=("#979DA2", "#565B5E"))
-    screen.command_entry.place(x=5, y=5)
-    discord_button = customtkinter.CTkButton(master=screen.column_1, width=145, text="Send Command",
-                                             command=lambda: rcon_query_button_function(screen, rcon_credentials),
-                                             corner_radius=6)
-    discord_button.place(x=30, y=30)
+
+    screen.command_entry = customtkinter.CTkEntry(master=screen.column_1, width=285, placeholder_text='Command',border_color=("#979DA2", "#565B5E"))
+    screen.command_entry.place(x=15, y=369)
+
+    discord_button = customtkinter.CTkButton(master=screen.column_1, width=145, text="Send Command", command=lambda: rcon_query_button_function(screen, rcon_credentials), corner_radius=6)
+    discord_button.place(x=85, y=402)
+
+    screen.error_label = customtkinter.CTkLabel(
+        master=screen.column_1,
+        text="[ Error ]\nThis is an example error",
+        font=("Times Bold", 12),
+        text_color="#E22323"
+    )
+    screen.error_label.place(relx=0.5, y=445, anchor="center")
+
+    # Column 2
+    screen.column_2 = customtkinter.CTkFrame(
+        master=screen.main_frame,
+        width=605,
+        height=460,
+        corner_radius=6)
+    screen.column_2.place(x=330, y=10)
+
+    screen.text_box = customtkinter.CTkTextbox(master=screen.column_2, width=585, height=350, border_width=2, border_color=("#3E454A", "#949A9F"), bg_color="transparent")
+    screen.text_box.place(x=10, y=10)
 
 
 def sending(creds, command, *args):
     async def run_sending():
         if not asyncio.get_event_loop().is_running():
             print("No event loop running")
-            await asyncio.run(async_send_command(creds, command, *args))
+            await async_send_command(creds, command, *args)
         else:
             print("Event loop running")
             asyncio.create_task(async_send_command(creds, command, *args))
@@ -181,8 +198,11 @@ def rcon_query_button_function(screen, rcon_credentials):
     rcon_query = screen.command_entry.get()
     try:
         command, arguments = rcon_query.split(" ", maxsplit=1)
-        sending(rcon_credentials, command, arguments)
-        print(f"{command} {arguments}")
+        if command in valid_commands:
+            sending(rcon_credentials, command, arguments)
+            print(f"{command} {arguments}")
+        else:
+            print("Command not valid. Type Help for info")
     except ValueError as err:
         if len(rcon_query) == 0:
             print("Please enter a valid command")
