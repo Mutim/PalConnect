@@ -1,0 +1,4 @@
+aiohttp==3.9.1
+customtkinter==5.2.2
+pillow==10.2.0
+rcon==2.4.4
