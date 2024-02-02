@@ -12,6 +12,20 @@ default_textbox_text = f"""
 
 """
 
+valid_commands = {
+    "Broadcast": "{MessageText}	Send message to all player in the server.",
+    "Info": "Returns server info",
+    "Shutdown": "{Seconds} {MessageText} The server will shut down after {Seconds}, and display {MessageText}",
+    "DoExit": "Force stop the server.",
+    "KickPlayer": "	Kick player from the server.",
+    "BanPlayer": "{SteamID}	BAN player from the server.",
+    "TelePortToPlayer": "{SteamID}	Teleport to current location of target player.",
+    "TeleportToMe": "{SteamID}	Target player teleport to your current location",
+    "ShowPlayers": "Show information on all connected players.",
+    "Save": "Save the world data.",
+    "Help": "Serve this page"
+}
+
 ### - Image Options
 image_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "images")
 logo_png = os.path.join(image_path, "logo.png")

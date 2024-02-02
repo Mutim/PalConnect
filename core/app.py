@@ -141,20 +141,6 @@ def rcon_command_screen(screen: customtkinter.CTk, rcon_credentials: dict):
         corner_radius=6)
     screen.column_1.place(x=10, y=10)
 
-    screen.command_entry = customtkinter.CTkEntry(master=screen.column_1, width=285, placeholder_text='Command',border_color=("#979DA2", "#565B5E"))
-    screen.command_entry.place(x=15, y=369)
-
-    discord_button = customtkinter.CTkButton(master=screen.column_1, width=145, text="Send Command", command=lambda: rcon_query_button_function(screen, rcon_credentials), corner_radius=6)
-    discord_button.place(x=85, y=402)
-
-    screen.error_label = customtkinter.CTkLabel(
-        master=screen.column_1,
-        text="[ Error ]\nThis is an example error",
-        font=("Times Bold", 12),
-        text_color="#E22323"
-    )
-    screen.error_label.place(relx=0.5, y=445, anchor="center")
-
     # Column 2
     screen.column_2 = customtkinter.CTkFrame(
         master=screen.main_frame,
@@ -163,8 +149,25 @@ def rcon_command_screen(screen: customtkinter.CTk, rcon_credentials: dict):
         corner_radius=6)
     screen.column_2.place(x=330, y=10)
 
-    screen.text_box = customtkinter.CTkTextbox(master=screen.column_2, width=585, height=350, border_width=2, border_color=("#3E454A", "#949A9F"), bg_color="transparent")
+    screen.text_box = customtkinter.CTkTextbox(master=screen.column_2, width=585, height=370, border_width=2, border_color=("#3E454A", "#949A9F"), bg_color="transparent")
     screen.text_box.place(x=10, y=10)
+
+    screen.command_entry = customtkinter.CTkEntry(master=screen.column_2, width=469, placeholder_text='Command',
+                                                  border_color=("#979DA2", "#565B5E"))
+    screen.command_entry.place(x=15, y=389)
+
+    discord_button = customtkinter.CTkButton(master=screen.column_2, width=91, text="Send Command",
+                                             command=lambda: rcon_query_button_function(screen, rcon_credentials),
+                                             corner_radius=6)
+    discord_button.place(x=489, y=389)
+
+    screen.error_label = customtkinter.CTkLabel(
+        master=screen.column_2,
+        text="",
+        font=("Times Bold", 12),
+        text_color="#E22323"
+    )
+    screen.error_label.place(relx=0.5, y=440, anchor="center")
 
 
 def sending(creds, command, *args):
@@ -181,35 +184,35 @@ def sending(creds, command, *args):
 
 def rcon_query_button_function(screen, rcon_credentials):
 
-    # Move to config file
-    valid_commands = {
-        "Broadcast": "{MessageText}	Send message to all player in the server.",
-        "Info": "Returns server info",
-        "Shutdown": "{Seconds} {MessageText} The server will shut down after {Seconds}, and display {MessageText}",
-        "DoExit": "Force stop the server.",
-        "KickPlayer": "	Kick player from the server.",
-        "BanPlayer": "{SteamID}	BAN player from the server.",
-        "TeleportToPlayer": "{SteamID}	Teleport to current location of target player.",
-        "TeleportToMe": "{SteamID}	Target player teleport to your current location",
-        "ShowPlayers": "Show information on all connected players.",
-        "Save": "Save the world data.",
-        "Help": "Serve this page"
-    }
+    current_time = time.time()
+    local_time_struct = time.localtime(current_time)
+    formatted_local_time = time.strftime("%H:%M:%S", local_time_struct)
+    valid_commands = [key.lower() for key in config.valid_commands.keys()]
     rcon_query = screen.command_entry.get()
     try:
         command, arguments = rcon_query.split(" ", maxsplit=1)
-        if command in valid_commands:
+        if command.lower() in valid_commands:
             sending(rcon_credentials, command, arguments)
-            print(f"{command} {arguments}")
+            if len(arguments) > 40:
+                arguments = break_message(arguments, max_length=60)
+            text_entry = f"[ {formatted_local_time} ] - {command}: {arguments}\n"
+            screen.text_box.insert(tkinter.END, text_entry)
+            screen.error_label.configure(text="")
+            screen.command_entry.delete(0, len(screen.command_entry.get()))
         else:
-            print("Command not valid. Type Help for info")
+            screen.error_label.configure(text="[ ERROR ]\nCommand not valid. Type Help for info")
     except ValueError as err:
         if len(rcon_query) == 0:
-            print("Please enter a valid command")
+            screen.error_label.configure(text=f"[ ERROR ]\nNo command entered. Type Help for info\n{err}")
         elif rcon_query.split(" ")[0] not in valid_commands:
-            print("Command not valid. Type Help for info")
+            screen.error_label.configure(text="[ ERROR ]\nCommand not valid. Type Help for info")
         else:
-            sending(rcon_credentials, rcon_query)
+            if rcon_query.lower == "help":
+                print("Else")
+                screen.text_box.insert(tkinter.END, config.valid_commands)
+                return
+            screen.error_label.configure(text="")
+            print("Lower else" + rcon_query)
 
 
 def login_button_function(screen: customtkinter.CTk):

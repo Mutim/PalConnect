@@ -4,11 +4,9 @@ import asyncio
 import concurrent.futures
 
 import customtkinter
-import rcon
-from rcon.source import Client
-from rcon.source.proto import Packet
 
 from utils.pal_exceptions import *
+from palcon.source import MyClient, Packet
 import config
 
 __all__ = (
@@ -19,14 +17,6 @@ __all__ = (
     "break_message",
     "open_site"
 )
-
-
-class MyClient(Client):
-    # Palworld does not respond, so was killing the program. Have to make our own
-    def read(self):
-        with self._socket.makefile("rb") as file:
-            response = Packet.read(file)
-            return response
 
 
 async def async_send_command(credentials: dict, command: str, *arguments: str) -> bool:
@@ -49,9 +39,11 @@ async def async_send_command(credentials: dict, command: str, *arguments: str) -
     def sanitize_input(c: str, args: tuple) -> tuple:
         if c.lower() == "broadcast":
             message_raw = args[0]
-            message = message_raw.replace(" ", "\u00A0")
-            if len(message) > 39:
-                message = break_message(message, max_length=39, ret="\n")  # Breaks message into 40 character long strings with newlines to fit in PalWorld chat
+            if len(message_raw) > 39:
+                message = break_message(message_raw, max_length=40, ret="\n")  # Breaks message into 40 character long strings with newlines to fit in PalWorld chat
+                message = message.replace(" ", "\u00A0")
+            else:
+                message = message_raw.replace(" ", "\u00A0")
             message = tuple([message])
 
             return "Broadcast", message
@@ -92,16 +84,16 @@ async def async_send_command(credentials: dict, command: str, *arguments: str) -
                 client.send(request)
 
             print(request)
-            print("Finished Communication to Server. Closing connection")
             return True
         except rcon.exceptions.WrongPassword as err:
+            print(err)
             raise rcon.exceptions.WrongPassword
         except rcon.exceptions.SessionTimeout as err:
             print(f"Session Timed Out - {err}")
             return False
         except TimeoutError as err:
             print(f"Request Timed Out - {err}")
-            return False
+            raise TimeoutError
         except asyncio.CancelledError as err:
             print(f"Request Cancelled - {err}")
             return False
@@ -109,8 +101,7 @@ async def async_send_command(credentials: dict, command: str, *arguments: str) -
             print(f"Unhandled Exception: {err}")
             return False
         finally:
-            # May need to close connections...I dunno
-            pass
+            print("Finished Communication to Server. Closing connection")
 
     loop = asyncio.get_event_loop()
     with concurrent.futures.ThreadPoolExecutor() as executor:
@@ -182,10 +173,8 @@ async def valid_input(screen: customtkinter.CTk, credentials: dict) -> bool:
             screen.password_entry.configure(border_color='#E53030', placeholder_text='Invalid Password')
             screen.error_label.configure(text="[ Error ]\nInvalid Password")
             valid_cred.append(False)
-            print("\nPassword is incorrect - Error code")
         except (TimeoutError, OSError) as err:
-            print(f"Connection error: {err}")
-            screen.error_label.configure(text="[ Error ]\nRequest timed out. Check your login credentials")
+            screen.error_label.configure(text="[ Error ]\nCould not communicate with the server")
             valid_cred.append(False)
 
         except Exception as err:
