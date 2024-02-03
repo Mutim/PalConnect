@@ -16,7 +16,8 @@ Dependencies:
 
 
 import rcon
-from rcon.source import Client
+from rcon.battleye import Client
+# from rcon.source import Client
 from rcon.source.proto import Packet
 
 
