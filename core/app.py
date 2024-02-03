@@ -80,14 +80,17 @@ class ServerConnectionScreen(customtkinter.CTk):
             )
         self.error_label.place(relx=0.5, y=338, anchor="center")
 
-        self.ipaddr_entry = customtkinter.CTkEntry(master=self.frame, width=220, placeholder_text='161.129.249.16', border_color=("#979DA2", "#565B5E"))
+        self.ipaddr_entry = customtkinter.CTkEntry(master=self.frame, width=220, placeholder_text='IP Address', border_color=("#979DA2", "#565B5E"))
         self.ipaddr_entry.place(x=50, y=100)
+        self.ipaddr_entry.bind("<Return>", lambda event, screen=self: login_button_function(screen))
 
-        self.port_entry = customtkinter.CTkEntry(master=self.frame, width=220, placeholder_text='25575', border_color=("#979DA2", "#565B5E"))
+        self.port_entry = customtkinter.CTkEntry(master=self.frame, width=220, placeholder_text='Port', border_color=("#979DA2", "#565B5E"))
         self.port_entry.place(x=50, y=145)
+        self.port_entry.bind("<Return>", lambda event, screen=self: login_button_function(screen))
 
         self.password_entry = customtkinter.CTkEntry(master=self.frame, width=220, placeholder_text='Password', show="*", border_color=("#979DA2", "#565B5E"))
         self.password_entry.place(x=50, y=190)
+        self.password_entry.bind("<Return>", lambda event, screen=self: login_button_function(screen))
 
         # Create buttons
         self.login_button = customtkinter.CTkButton(master=self.frame, width=220, text="Login",
@@ -149,17 +152,18 @@ def rcon_command_screen(screen: customtkinter.CTk, rcon_credentials: dict):
         corner_radius=6)
     screen.column_2.place(x=330, y=10)
 
-    screen.text_box = customtkinter.CTkTextbox(master=screen.column_2, width=585, height=370, border_width=2, border_color=("#3E454A", "#949A9F"), bg_color="transparent")
+    screen.text_box = customtkinter.CTkTextbox(master=screen.column_2, width=585, height=370, border_width=2, border_color=("#3E454A", "#949A9F"), bg_color="transparent", state="disabled")
     screen.text_box.place(x=10, y=10)
 
     screen.command_entry = customtkinter.CTkEntry(master=screen.column_2, width=469, placeholder_text='Command',
                                                   border_color=("#979DA2", "#565B5E"))
-    screen.command_entry.place(x=15, y=389)
+    screen.command_entry.place(x=15, y=386)
+    screen.command_entry.bind("<Return>", lambda event: rcon_query_button_function(screen, rcon_credentials))
 
     discord_button = customtkinter.CTkButton(master=screen.column_2, width=91, text="Send Command",
                                              command=lambda: rcon_query_button_function(screen, rcon_credentials),
                                              corner_radius=6)
-    discord_button.place(x=489, y=389)
+    discord_button.place(x=489, y=386)
 
     screen.error_label = customtkinter.CTkLabel(
         master=screen.column_2,
@@ -167,10 +171,11 @@ def rcon_command_screen(screen: customtkinter.CTk, rcon_credentials: dict):
         font=("Times Bold", 12),
         text_color="#E22323"
     )
-    screen.error_label.place(relx=0.5, y=440, anchor="center")
+    screen.error_label.place(relx=0.5, y=437, anchor="center")
 
 
 def sending(creds, command, *args):
+
     async def run_sending():
         if not asyncio.get_event_loop().is_running():
             print("No event loop running")
@@ -187,32 +192,50 @@ def rcon_query_button_function(screen, rcon_credentials):
     current_time = time.time()
     local_time_struct = time.localtime(current_time)
     formatted_local_time = time.strftime("%H:%M:%S", local_time_struct)
-    valid_commands = [key.lower() for key in config.valid_commands.keys()]
-    rcon_query = screen.command_entry.get()
+    screen.error_label.configure(text="")  # Reset error text
+    entry_text = screen.command_entry.get()
     try:
-        command, arguments = rcon_query.split(" ", maxsplit=1)
-        if command.lower() in valid_commands:
+        command, arguments = check_command(entry_text)
+        if not command:
+            screen.error_label.configure(text="[ ERROR ]\nCommand not valid. Type Help for info\n")
+            return
+
+        print(f"Command: {command} Arguments: {arguments}")
+
+        if command.lower() != "help":
             sending(rcon_credentials, command, arguments)
             if len(arguments) > 40:
                 arguments = break_message(arguments, max_length=60)
-            text_entry = f"[ {formatted_local_time} ] - {command}: {arguments}\n"
-            screen.text_box.insert(tkinter.END, text_entry)
-            screen.error_label.configure(text="")
-            screen.command_entry.delete(0, len(screen.command_entry.get()))
         else:
-            screen.error_label.configure(text="[ ERROR ]\nCommand not valid. Type Help for info")
+            arguments = "\n" + "\n".join([f"{key}: {value}" for key, value in config.valid_commands.items()])
+
+        text_entry = f"[ {formatted_local_time} ] - {command}: {arguments}\n"
+        screen.text_box.configure(state="normal")
+        screen.text_box.insert(tkinter.END, text_entry)
+        screen.text_box.configure(state="disabled")
+        screen.command_entry.delete(0, len(screen.command_entry.get()))
+
     except ValueError as err:
-        if len(rcon_query) == 0:
-            screen.error_label.configure(text=f"[ ERROR ]\nNo command entered. Type Help for info\n{err}")
-        elif rcon_query.split(" ")[0] not in valid_commands:
-            screen.error_label.configure(text="[ ERROR ]\nCommand not valid. Type Help for info")
-        else:
-            if rcon_query.lower == "help":
-                print("Else")
-                screen.text_box.insert(tkinter.END, config.valid_commands)
-                return
-            screen.error_label.configure(text="")
-            print("Lower else" + rcon_query)
+        screen.error_label.configure(text=f"[ ERROR ]\nNo command entered. Type Help for info\n{err}")
+    except Exception as err:
+        screen.error_label.configure(text=f"[ ERROR ]\nUnexpected error. Please report on GitHub\n{err}")
+
+
+def check_command(entry: str) -> tuple:
+
+    # returns true if valid command, regardless of split. If more than 1 word, it will only check the fist word.
+    # If only 1 word is passed, it will check that word, and return true if it's in valid commands
+    valid_commands = [key.lower() for key in config.valid_commands.keys()]
+
+    if " " in entry:
+        command, arguments = entry.split(" ", maxsplit=1)
+    else:
+        command, arguments = entry, ""
+
+    if command.lower() in valid_commands:
+        return command, arguments
+    else:
+        return None, None
 
 
 def login_button_function(screen: customtkinter.CTk):
@@ -240,18 +263,16 @@ def login_button_function(screen: customtkinter.CTk):
 
 # Handles login asynchronously. May move this functionality to a more general handler
 async def login_handler(screen, rcon_credentials):
-    if await valid_input(screen, rcon_credentials):
-        try:
-            rcon_credentials = {
-                "ipaddr": screen.ipaddr_entry.get(),
-                "port": int(screen.port_entry.get()),
-                "password": screen.password_entry.get()
-            }
 
-            rcon_command_screen(screen, rcon_credentials)
-            print("Can connect")
-        except TimeoutError as err:
-            print(err)
-            screen.error_label.configure(text=f"[ ERROR ]\n{err}")
+    if await valid_input(screen, rcon_credentials):
+        rcon_credentials = {
+            "ipaddr": screen.ipaddr_entry.get(),
+            "port": int(screen.port_entry.get()),
+            "password": screen.password_entry.get()
+        }
+
+        rcon_command_screen(screen, rcon_credentials)
+        print("Can connect")
     else:
         screen.login_button.configure(state="normal")
+        print("Cannot connect")
