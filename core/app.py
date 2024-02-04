@@ -189,38 +189,27 @@ def rcon_command_screen(screen: customtkinter.CTk, rcon_credentials: dict):
 
 
 def sending(creds, command, *args):
+
+    loop = asyncio.get_event_loop()
+
     async def run_sending():
-        if not asyncio.get_event_loop().is_running():
+        if not loop.is_running():
             print("No event loop running")
-            await async_send_command(creds, command, *args)
+            result = loop.run_until_complete(async_send_command(creds, command, *args))
+            print(f"Sending Result is: {result}")
+            return result
         else:
             print("Event loop running")
-            asyncio.create_task(async_send_command(creds, command, *args))
+            result = await async_send_command(creds, command, *args)
+            print(f"Sending Result is: {result}")
+            return result
 
-    asyncio.run(run_sending())
-    
-    # async def run_sending():
-    #     if not asyncio.get_event_loop().is_running():
-    #         print("No event loop running")
-    #         result = await async_send_command(creds, command, *args)
-    #         print(f"Sending Result is: {result}")
-    #         return result
-    #     else:
-    #         print("Event loop running")
-    #         task = asyncio.create_task(async_send_command(creds, command, *args))
-    #         await task  # Wait for the task to complete
-    #         result = task.result()  # Get the result from the completed task
-    #         print(f"Sending Result is: {result}")
-    #         return result
-    #
-    # loop = asyncio.get_event_loop()
-    #
-    # if not loop.is_running():
-    #     print("No event loop running")
-    #     return loop.run_until_complete(run_sending())
-    # else:
-    #     print("Event loop running")
-    #     return asyncio.create_task(run_sending())
+    if not loop.is_running():
+        print("No event loop running")
+        return loop.run_until_complete(run_sending())
+    else:
+        print("Event loop running")
+        return asyncio.create_task(run_sending())
 
 
 def rcon_query_button_function(screen, rcon_credentials):
