@@ -39,7 +39,7 @@ async def async_send_command(credentials: dict, command: str, *arguments: str) -
 
     command, arguments = sanitize_input(command, arguments)
 
-    response = None
+    response = ""
 
     def run_command():
         """
@@ -48,12 +48,13 @@ async def async_send_command(credentials: dict, command: str, *arguments: str) -
         Returns:
         - bool: True if the command is successfully sent, False otherwise.
         """
-        print(f"Starting Communication to Server...\nCommand: {command}\nArguments: {arguments}\n{credentials}")
         nonlocal response
+
+        print(f"Starting Communication to Server...\nCommand: {command}\nArguments: {arguments}\n{credentials}")
+
         try:
             with Client(ipaddr, port, passwd=password) as client:
                 request = client.run(command, *arguments, encoding="ISO-8859-1", enforce_id=False)
-            print(request)
             response = request
             return response
         except rcon.exceptions.WrongPassword as err:
@@ -80,6 +81,8 @@ async def async_send_command(credentials: dict, command: str, *arguments: str) -
             return await loop.run_in_executor(executor, run_command)
         except asyncio.CancelledError:
             print("Task Cancelled (outside run_in_executor)")
+
+    return response
 
 
 def sanitize_input(command: str, args: tuple) -> tuple:
@@ -155,21 +158,23 @@ async def valid_input(screen: customtkinter.CTk, credentials: dict) -> bool:
     # screen.login_button.place_forget()
 
     valid_cred = []
+
     try:
         a = is_valid_ip(credentials['ipaddr'])
         valid_cred.append(True)
     except InvalidIpAddress as err:
         screen.ipaddr_entry.delete(0, len(screen.ipaddr_entry.get()))
-        screen.ipaddr_entry.configure(border_color='#E53030', placeholder_text='Invalid IP Address')
+        # screen.ipaddr_entry.configure(border_color='#E53030', placeholder_text='Invalid IP Address')
         screen.error_label.configure(text=f"[ Error ]\nNot a Valid IP Address")
         valid_cred.append(False)
         print(f"\nIP Address is invalid - {err}")
+
     try:
         b = int(credentials['port'])
         valid_cred.append(True)
     except ValueError as err:
         screen.port_entry.delete(0, len(screen.port_entry.get()))
-        screen.port_entry.configure(border_color='#E53030', placeholder_text='Invalid Port Number')
+        # screen.port_entry.configure(border_color='#E53030', placeholder_text='Invalid Port Number')
         screen.error_label.configure(text=f"[ Error ]\nInvalid Port Number")
         valid_cred.append(False)
         print(f"Invalid Port Number - {err}")
@@ -179,6 +184,7 @@ async def valid_input(screen: customtkinter.CTk, credentials: dict) -> bool:
             "ipaddr": credentials['ipaddr'],
             "port": int(credentials['port']),
             "password": credentials['password']}
+
         try:
             result = await async_send_command(credentials, "Info")
             print(f"Result is: {result}")
@@ -190,7 +196,7 @@ async def valid_input(screen: customtkinter.CTk, credentials: dict) -> bool:
                 print("Appending False")
         except rcon.exceptions.WrongPassword as err:
             screen.password_entry.delete(0, len(screen.password_entry.get()))
-            screen.password_entry.configure(border_color='#E53030', placeholder_text='Invalid Password')
+            # screen.password_entry.configure(border_color='#E53030', placeholder_text='Invalid Password')
             screen.error_label.configure(text="[ Error ]\nInvalid Password")
             valid_cred.append(False)
         except (TimeoutError, OSError) as err:
@@ -202,7 +208,7 @@ async def valid_input(screen: customtkinter.CTk, credentials: dict) -> bool:
             print(f"**Log This** - {err}")
     print(valid_cred)
     if all(valid_cred):
-        return True
+        return result
 
     return False
 

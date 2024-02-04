@@ -1,4 +1,5 @@
 import os
+import sys
 import time
 import asyncio
 
@@ -120,6 +121,17 @@ class ServerConnectionScreen(customtkinter.CTk):
     def toplevel_close_event(self):
         self.toplevel_window = None
 
+    # modify update function to allow threading
+    def update(self):
+        if self._window_exists is False:
+            if sys.platform.startswith("win"):
+                if not self._withdraw_called_before_window_exists and not self._iconify_called_before_window_exists:
+                    self.deiconify()
+
+            self._window_exists = True
+
+        super().update()
+
 
 def rcon_command_screen(screen: customtkinter.CTk, rcon_credentials: dict):
     """Main command screen for sending RCON commands. This is where all functionality lives"""
@@ -159,7 +171,7 @@ def rcon_command_screen(screen: customtkinter.CTk, rcon_credentials: dict):
                                                   border_color=("#979DA2", "#565B5E"))
     screen.command_entry.place(x=15, y=386)
     screen.command_entry.bind("<Return>", lambda event: rcon_query_button_function(screen, rcon_credentials))
-    screen.text_box.insert(tkinter.END, sending(rcon_credentials, "Info"))
+
     send_button = customtkinter.CTkButton(master=screen.column_2, width=91, text="Send Command",
                                              command=lambda: rcon_query_button_function(screen, rcon_credentials),
                                              corner_radius=6)
@@ -173,22 +185,42 @@ def rcon_command_screen(screen: customtkinter.CTk, rcon_credentials: dict):
     )
     screen.error_label.place(relx=0.5, y=437, anchor="center")
 
+    screen.text_box.insert(tkinter.END, sending(rcon_credentials, "Info"))
+
 
 def sending(creds, command, *args):
-
     async def run_sending():
         if not asyncio.get_event_loop().is_running():
             print("No event loop running")
-            result = await async_send_command(creds, command, *args)
-            return result
+            await async_send_command(creds, command, *args)
         else:
             print("Event loop running")
             asyncio.create_task(async_send_command(creds, command, *args))
 
-    loop = asyncio.get_event_loop()
-    result = loop.run_until_complete(run_sending())
-    # result = asyncio.run(run_sending())
-    return result
+    asyncio.run(run_sending())
+    
+    # async def run_sending():
+    #     if not asyncio.get_event_loop().is_running():
+    #         print("No event loop running")
+    #         result = await async_send_command(creds, command, *args)
+    #         print(f"Sending Result is: {result}")
+    #         return result
+    #     else:
+    #         print("Event loop running")
+    #         task = asyncio.create_task(async_send_command(creds, command, *args))
+    #         await task  # Wait for the task to complete
+    #         result = task.result()  # Get the result from the completed task
+    #         print(f"Sending Result is: {result}")
+    #         return result
+    #
+    # loop = asyncio.get_event_loop()
+    #
+    # if not loop.is_running():
+    #     print("No event loop running")
+    #     return loop.run_until_complete(run_sending())
+    # else:
+    #     print("Event loop running")
+    #     return asyncio.create_task(run_sending())
 
 
 def rcon_query_button_function(screen, rcon_credentials):
@@ -275,8 +307,8 @@ async def login_handler(screen, rcon_credentials):
             "password": screen.password_entry.get()
         }
 
-        rcon_command_screen(screen, rcon_credentials)
         print("Can connect")
+        rcon_command_screen(screen, rcon_credentials)
     else:
         screen.login_button.configure(state="normal")
         print("Cannot connect")

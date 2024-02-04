@@ -1,11 +1,11 @@
 
 
 def main():
-    time = "a"
-    new = int(time)
-
-    print(new)
-
+    response = "Yes"
+    return response
 
 if __name__ == '__main__':
-    main()
+    if main():
+        print("Yes")
+    else:
+        print("No")
