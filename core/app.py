@@ -185,8 +185,6 @@ def rcon_command_screen(screen: customtkinter.CTk, rcon_credentials: dict):
     )
     screen.error_label.place(relx=0.5, y=437, anchor="center")
 
-    screen.text_box.insert(tkinter.END, sending(rcon_credentials, "Info"))
-
 
 def sending(creds, command, *args):
 
@@ -228,13 +226,12 @@ def rcon_query_button_function(screen, rcon_credentials):
         print(f"Command: {command} Arguments: {arguments}")
 
         if command.lower() != "help":
-            sending(rcon_credentials, command, arguments)
-            if len(arguments) > 40:
-                arguments = break_message(arguments, max_length=60)
+            result = sending(rcon_credentials, command, arguments)
         else:
-            arguments = "\n" + "\n".join([f"{key}: {value}" for key, value in config.valid_commands.items()])
+            result = "\n" + "\n".join([f"{key}: {value}" for key, value in config.valid_commands.items()])
+            result = break_message(result, max_length=60)
 
-        text_entry = f"[ {formatted_local_time} ] - {command}: {arguments}\n"
+        text_entry = f"[ {formatted_local_time} ] - {result}\n"
         screen.text_box.configure(state="normal")
         screen.text_box.insert(tkinter.END, text_entry)
         screen.text_box.configure(state="disabled")
