@@ -159,11 +159,11 @@ def rcon_command_screen(screen: customtkinter.CTk, rcon_credentials: dict):
                                                   border_color=("#979DA2", "#565B5E"))
     screen.command_entry.place(x=15, y=386)
     screen.command_entry.bind("<Return>", lambda event: rcon_query_button_function(screen, rcon_credentials))
-
-    discord_button = customtkinter.CTkButton(master=screen.column_2, width=91, text="Send Command",
+    screen.text_box.insert(tkinter.END, sending(rcon_credentials, "Info"))
+    send_button = customtkinter.CTkButton(master=screen.column_2, width=91, text="Send Command",
                                              command=lambda: rcon_query_button_function(screen, rcon_credentials),
                                              corner_radius=6)
-    discord_button.place(x=489, y=386)
+    send_button.place(x=489, y=386)
 
     screen.error_label = customtkinter.CTkLabel(
         master=screen.column_2,
@@ -179,12 +179,16 @@ def sending(creds, command, *args):
     async def run_sending():
         if not asyncio.get_event_loop().is_running():
             print("No event loop running")
-            await async_send_command(creds, command, *args)
+            result = await async_send_command(creds, command, *args)
+            return result
         else:
             print("Event loop running")
             asyncio.create_task(async_send_command(creds, command, *args))
 
-    asyncio.run(run_sending())
+    loop = asyncio.get_event_loop()
+    result = loop.run_until_complete(run_sending())
+    # result = asyncio.run(run_sending())
+    return result
 
 
 def rcon_query_button_function(screen, rcon_credentials):

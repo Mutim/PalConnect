@@ -6,7 +6,9 @@ import concurrent.futures
 import customtkinter
 
 from utils.pal_exceptions import *
-from palcon.source import MyClient, Packet
+import rcon
+from rcon.source.client import Client
+
 import config
 
 __all__ = (
@@ -19,58 +21,27 @@ __all__ = (
 )
 
 
-async def async_send_command(credentials: dict, command: str, *arguments: str) -> bool:
+async def async_send_command(credentials: dict, command: str, *arguments: str) -> str:
     """
     Send an RCON command to a server.
 
     Args:
     - credentials (dict): Dictionary containing RCON connection details (ipaddr, port, password).
     - command (str): RCON command to be executed.
-    - arguments (str): Additional arguments for the command.
+    - arguments (str): Arguments for the command.
 
     Internal Functions:
-    - sanitize_input(c: str, args: tuple) -> tuple: Function to sanitize input, and verify that only correct commands are being served.
     - run_command() -> None: Function that allows async operation of the RCON connection on a separate thread.
     """
     ipaddr = credentials['ipaddr']
     port = credentials['port']
     password = credentials['password']
 
-    def sanitize_input(c: str, args: tuple) -> tuple:
-        if c.lower() == "broadcast":
-            message_raw = args[0]
-            if len(message_raw) > 39:
-                message = break_message(message_raw, max_length=40, ret="\n")  # Breaks message into 40 character long strings with newlines to fit in PalWorld chat
-                message = message.replace(" ", "\u00A0")
-            else:
-                message = message_raw.replace(" ", "\u00A0")
-            message = tuple([message])
-
-            return "Broadcast", message
-
-        elif c.lower() == "info":
-            return "Info", ""
-
-        elif c.lower() == "kickplayer":
-            return "KickPlayer", args
-
-        elif c.lower() == "shutdown":
-            message_raw = args[0]
-            message_split = message_raw.split(maxsplit=1)
-            time = message_split[0]
-            try:
-                time = int(time)
-            except ValueError:
-                print("Time value could not be converted to an integer")
-                return "Info", ""  # Returning info until we get a way to communicate
-            message = message_split[1].replace(" ", "\u00A0")
-            message = tuple([time + message])
-
-            return "Shutdown", message
-
     command, arguments = sanitize_input(command, arguments)
 
-    def run_command() -> bool:
+    response = None
+
+    def run_command():
         """
         Internal function to execute the RCON command in a separate thread.
 
@@ -78,28 +49,28 @@ async def async_send_command(credentials: dict, command: str, *arguments: str) -
         - bool: True if the command is successfully sent, False otherwise.
         """
         print(f"Starting Communication to Server...\nCommand: {command}\nArguments: {arguments}\n{credentials}")
+        nonlocal response
         try:
-            with MyClient(ipaddr, port, passwd=password) as client:
-                request = Packet.make_command(command, *arguments, encoding="ISO-8859-1")
-                client.send(request)
-
+            with Client(ipaddr, port, passwd=password) as client:
+                request = client.run(command, *arguments, encoding="ISO-8859-1", enforce_id=False)
             print(request)
-            return True
+            response = request
+            return response
         except rcon.exceptions.WrongPassword as err:
             print(err)
             raise rcon.exceptions.WrongPassword
         except rcon.exceptions.SessionTimeout as err:
             print(f"Session Timed Out - {err}")
-            return False
+            raise rcon.exceptions.SessionTimeout
         except TimeoutError as err:
             print(f"Request Timed Out - {err}")
             raise TimeoutError
         except asyncio.CancelledError as err:
             print(f"Request Cancelled - {err}")
-            return False
+            return asyncio.CancelledError
         except Exception as err:
             print(f"Unhandled Exception: {err}")
-            return False
+            raise Exception
         finally:
             print("Finished Communication to Server. Closing connection")
 
@@ -111,12 +82,61 @@ async def async_send_command(credentials: dict, command: str, *arguments: str) -
             print("Task Cancelled (outside run_in_executor)")
 
 
+def sanitize_input(command: str, args: tuple) -> tuple:
+    """Sanitizes the input of the `async_send_command()` function. This is to prevent arbitrary input,
+        and verify that only correct commands are being served. Handles each command differently.
+
+    Args:
+        command: (str): The command that should be checked.
+        args: (tuple): A tuple of arguments. This is passed as (args,).
+
+    Returns:
+        tuple: Will return a tuple of (command, args) to be passed to rcon
+
+    Note:
+    - If a new command is added to config.valid_commands, a new check must be added here. This might not be the best way.
+    """
+    if command.lower() == "broadcast":
+        message_raw = args[0]
+        if len(message_raw) > 39:
+            message = break_message(message_raw, max_length=40, ret="\n")  # Breaks message into 40 character long strings with newlines to fit in PalWorld chat
+            message = message.replace(" ", "\u00A0")
+        else:
+            message = message_raw.replace(" ", "\u00A0")
+        message = tuple([message])
+
+        return "Broadcast", message
+
+    elif command.lower() == "info":
+        return "Info", ""
+
+    elif command.lower() == "kickplayer":
+        return "KickPlayer", args
+
+    elif command.lower() == "showplayers":
+        return "ShowPlayers", ""
+
+    elif command.lower() == "shutdown":
+        message_raw = args[0]
+        message_split = message_raw.split(maxsplit=1)
+        time = message_split[0]
+        try:
+            time = int(time)
+        except ValueError:
+            print("Time value could not be converted to an integer")
+            return "Info", ""  # Returning info until we get a way to communicate
+        message = message_split[1].replace(" ", "\u00A0")
+        message = tuple([time + message])
+
+        return "Shutdown", message
+
+
 async def valid_input(screen: customtkinter.CTk, credentials: dict) -> bool:
     """Test if the provided credentials were accurate, and of correct type.
 
     Args:
-        screen (customtkinter.CTk): The main application window.
-        credentials (dict): A dictionary containing RCON login credentials.
+        screen: (customtkinter.CTk): The main application window.
+        credentials: (dict): A dictionary containing RCON login credentials.
 
     Returns:
         bool: True if a connection to the RCON server can be established, False otherwise.
@@ -176,7 +196,6 @@ async def valid_input(screen: customtkinter.CTk, credentials: dict) -> bool:
         except (TimeoutError, OSError) as err:
             screen.error_label.configure(text="[ Error ]\nCould not communicate with the server")
             valid_cred.append(False)
-
         except Exception as err:
             screen.error_label.configure(text=f"[ General Error ]\nPlease report this on Github.")
             valid_cred.append(False)
