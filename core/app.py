@@ -129,7 +129,7 @@ class ServerConnectionScreen(customtkinter.CTk):
                     self.deiconify()
 
             self._window_exists = True
-
+        print("Update")
         super().update()
 
 
@@ -166,6 +166,7 @@ def rcon_command_screen(screen: customtkinter.CTk, rcon_credentials: dict):
 
     screen.text_box = customtkinter.CTkTextbox(master=screen.column_2, width=585, height=370, border_width=2, border_color=("#3E454A", "#949A9F"), bg_color="transparent", state="disabled")
     screen.text_box.place(x=10, y=10)
+    screen.text_box.tag_config("center", justify="center")
 
     screen.command_entry = customtkinter.CTkEntry(master=screen.column_2, width=469, placeholder_text='Command',
                                                   border_color=("#979DA2", "#565B5E"))
@@ -173,8 +174,8 @@ def rcon_command_screen(screen: customtkinter.CTk, rcon_credentials: dict):
     screen.command_entry.bind("<Return>", lambda event: rcon_query_button_function(screen, rcon_credentials))
 
     send_button = customtkinter.CTkButton(master=screen.column_2, width=91, text="Send Command",
-                                             command=lambda: rcon_query_button_function(screen, rcon_credentials),
-                                             corner_radius=6)
+                                          command=lambda: rcon_query_button_function(screen, rcon_credentials),
+                                          corner_radius=6)
     send_button.place(x=489, y=386)
 
     screen.error_label = customtkinter.CTkLabel(
@@ -185,6 +186,11 @@ def rcon_command_screen(screen: customtkinter.CTk, rcon_credentials: dict):
     )
     screen.error_label.place(relx=0.5, y=437, anchor="center")
 
+    screen.text_box.configure(state="normal")
+    screen.text_box.insert(tkinter.END, config.welcome_text, "center")
+    screen.text_box.configure(state="disabled")
+    print(config.welcome_text)
+
 
 def sending(creds, command, *args):
 
@@ -192,21 +198,17 @@ def sending(creds, command, *args):
 
     async def run_sending():
         if not loop.is_running():
-            print("No event loop running")
             result = loop.run_until_complete(async_send_command(creds, command, *args))
             print(f"Sending Result is: {result}")
             return result
         else:
-            print("Event loop running")
             result = await async_send_command(creds, command, *args)
             print(f"Sending Result is: {result}")
             return result
 
     if not loop.is_running():
-        print("No event loop running")
         return loop.run_until_complete(run_sending())
     else:
-        print("Event loop running")
         return asyncio.create_task(run_sending())
 
 
@@ -258,6 +260,14 @@ def check_command(entry: str) -> tuple:
         return command, arguments
     else:
         return None, None
+
+
+def send_welcome_text(rcon_credentials) -> str:
+    # time.sleep(3.0)
+
+    intro_text = sending(rcon_credentials, "Info")
+    print("Inserting Intro Text")
+    return intro_text
 
 
 def login_button_function(screen: customtkinter.CTk):

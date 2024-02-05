@@ -11,6 +11,9 @@ discord_url = 'https://www.discord.gg/'
 default_textbox_text = f"""
 
 """
+
+welcome_text = "Welcome Text"  # Changed when server checks for connection
+
 # Key: Value must be a combined length of less than 95 characters to fit on screen
 valid_commands = {
     "Broadcast": "{MessageText}	Send message to all player in the server.",

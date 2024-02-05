@@ -134,7 +134,7 @@ def sanitize_input(command: str, args: tuple) -> tuple:
         return "Shutdown", message
 
 
-async def valid_input(screen: customtkinter.CTk, credentials: dict) -> bool:
+async def valid_input(screen: customtkinter.CTk, credentials: dict) -> bool | str:
     """Test if the provided credentials were accurate, and of correct type.
 
     Args:
@@ -155,9 +155,9 @@ async def valid_input(screen: customtkinter.CTk, credentials: dict) -> bool:
       on the application screen accordingly.
 
     """
-    # screen.login_button.place_forget()
 
     valid_cred = []
+    result = ""
 
     try:
         a = is_valid_ip(credentials['ipaddr'])
@@ -187,6 +187,7 @@ async def valid_input(screen: customtkinter.CTk, credentials: dict) -> bool:
 
         try:
             result = await async_send_command(credentials, "Info")
+            config.welcome_text = f'Connected to PalConnect server!\n{result}\n\n________________________________________\n'
             print(f"Result is: {result}")
             if result:
                 valid_cred.append(True)
