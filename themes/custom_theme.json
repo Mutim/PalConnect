@@ -12,6 +12,9 @@
     "top_fg_color": ["gray81", "gray20"],
     "border_color": ["gray65", "gray28"]
   },
+  "CTkScrollableFrame": {
+    "label_fg_color": ["gray78", "gray23"]
+  },
   "CTkButton": {
     "corner_radius": 6,
     "border_width": 0,

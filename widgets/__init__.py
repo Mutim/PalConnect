@@ -1,2 +1,2 @@
 from .spinbox import *
-from .scrollable_frame import *
+from .scrollable_frames import *

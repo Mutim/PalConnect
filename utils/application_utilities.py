@@ -17,7 +17,8 @@ __all__ = (
     "is_valid_ip",
     "center_window",
     "break_message",
-    "open_site"
+    "open_site",
+    "get_player_list"
 )
 
 
@@ -164,7 +165,7 @@ async def valid_input(screen: customtkinter.CTk, credentials: dict) -> bool | st
         valid_cred.append(True)
     except InvalidIpAddress as err:
         screen.ipaddr_entry.delete(0, len(screen.ipaddr_entry.get()))
-        # screen.ipaddr_entry.configure(border_color='#E53030', placeholder_text='Invalid IP Address')
+        screen.ipaddr_entry.configure(border_color='#E53030')
         screen.error_label.configure(text=f"[ Error ]\nNot a Valid IP Address")
         valid_cred.append(False)
         print(f"\nIP Address is invalid - {err}")
@@ -174,7 +175,7 @@ async def valid_input(screen: customtkinter.CTk, credentials: dict) -> bool | st
         valid_cred.append(True)
     except ValueError as err:
         screen.port_entry.delete(0, len(screen.port_entry.get()))
-        # screen.port_entry.configure(border_color='#E53030', placeholder_text='Invalid Port Number')
+        screen.port_entry.configure(border_color='#E53030')
         screen.error_label.configure(text=f"[ Error ]\nInvalid Port Number")
         valid_cred.append(False)
         print(f"Invalid Port Number - {err}")
@@ -197,7 +198,7 @@ async def valid_input(screen: customtkinter.CTk, credentials: dict) -> bool | st
                 print("Appending False")
         except rcon.exceptions.WrongPassword as err:
             screen.password_entry.delete(0, len(screen.password_entry.get()))
-            # screen.password_entry.configure(border_color='#E53030', placeholder_text='Invalid Password')
+            screen.password_entry.configure(border_color='#E53030')
             screen.error_label.configure(text="[ Error ]\nInvalid Password")
             valid_cred.append(False)
         except (TimeoutError, OSError) as err:
@@ -212,6 +213,25 @@ async def valid_input(screen: customtkinter.CTk, credentials: dict) -> bool | st
         return result
 
     return False
+
+
+async def get_player_list(credentials) -> list[tuple]:
+
+    players_online = []
+
+    player_info_string = await async_send_command(credentials, "ShowPlayers")
+
+    lines = player_info_string.split("\n")
+
+    header = lines[0].split(",")
+    lines = lines[1:]
+
+    for line in lines:
+        values = line.split(",")
+        player_info = tuple(values)
+        players_online.append(player_info)
+
+    return players_online
 
 
 def is_valid_ip(ip) -> bool:
