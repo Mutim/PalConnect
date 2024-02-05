@@ -4,14 +4,14 @@ import tkinter
 
 import customtkinter
 
-from application_utilities import *
+from utils.application_utilities import *
+import config
 
 __all__ = (
     "sending",
     "rcon_query_button_function",
     "check_command",
-    "login_handler",
-    "login_button_function"
+    "refresh_players_function"
 )
 
 
@@ -80,41 +80,17 @@ def check_command(entry: str) -> tuple:
         return None, None
 
 
-def login_button_function(screen: customtkinter.CTk):
+def refresh_players_function(rcon_credentials):
 
-    async def run_login_handler():
-        await login_handler(screen, rcon_credentials)
-    screen.error_label.configure(text="")
-    screen.ipaddr_entry.configure(border_color=("#979DA2", "#565B5E"), placeholder_text='IP Address')
-    screen.port_entry.configure(border_color=("#979DA2", "#565B5E"), placeholder_text='Port')
-    rcon_credentials = {
-        "ipaddr": screen.ipaddr_entry.get(),
-        "port": screen.port_entry.get(),
-        "password": screen.password_entry.get()
-    }
+    try:
+        result = sending(rcon_credentials, "ShowPlayers")
 
-    loop = asyncio.get_event_loop()
+        if not result:
+            return [("Invalid", "00000", "00000")]
+        else:
+            return result
 
-    if not loop.is_running():
-        print("No event loop running")
-        loop.run_until_complete(run_login_handler())
-    else:
-        print("Event loop running")
-        asyncio.create_task(run_login_handler())
-
-
-# Handles login asynchronously. May move this functionality to a more general handler
-async def login_handler(screen, rcon_credentials):
-
-    if await valid_input(screen, rcon_credentials):
-        rcon_credentials = {
-            "ipaddr": screen.ipaddr_entry.get(),
-            "port": int(screen.port_entry.get()),
-            "password": screen.password_entry.get()
-        }
-
-        print("Can connect")
-        rcon_command_screen(screen, rcon_credentials)
-    else:
-        screen.login_button.configure(state="normal")
-        print("Cannot connect")
+    except ValueError as err:
+        print(f"Error with Refresh players function: {err}")
+    except Exception as err:
+        print(f"Error with Refresh players function: {err}")

@@ -56,39 +56,25 @@ class ScrollableRadiobuttonFrame(customtkinter.CTkScrollableFrame):
         return self.radiobutton_variable.get()
 
 
-class PlayerScrollableButtonFrame(customtkinter.CTkScrollableFrame):
-    def __init__(self, master, command_1=None, command_2=None, **kwargs):
+class ScrollableLabelButtonFrame(customtkinter.CTkScrollableFrame):
+    def __init__(self, master, command=None, **kwargs):
         super().__init__(master, **kwargs)
-        self.command_1 = command_1
-        self.command_2 = command_2
+        self.grid_columnconfigure(0, weight=1)
+
+        self.command = command
+        self.radiobutton_variable = customtkinter.StringVar()
         self.label_list = []
         self.button_list = []
 
     def add_item(self, item, image=None):
-
         label = customtkinter.CTkLabel(self, text=item, image=image, compound="left", padx=5, anchor="w")
-        button_1 = customtkinter.CTkButton(self, text="Command", width=75, height=24)
-        button_2 = customtkinter.CTkButton(self, text="Command", width=75, height=24)
-
-        if self.command_1 is not None:
-            button_1.configure(command=lambda: self.command_1(item))
-        if self.command_2 is not None:
-            button_1.configure(command=lambda: self.command_2(item))
-
-
+        button = customtkinter.CTkButton(self, text="Command", width=100, height=24)
+        if self.command is not None:
+            button.configure(command=lambda: self.command(item))
         label.grid(row=len(self.label_list), column=0, pady=(0, 10), sticky="w")
-        button_1.grid(row=len(self.button_list), column=1, pady=(0, 10), padx=5)
-        button_2.grid(row=len(self.button_list), column=1, pady=(0, 10), padx=5)
-
-        # label.pack(side="top", pady=(2, 2), anchor="w")
-        # button_1.pack(in_=label, side="top", pady=(0, 0), padx=5)
-        # button_2.pack(in_=label, side="top", pady=(0, 0), padx=5)
-        button_1.place(x=10, y=25 * len(self.button_list) + 24)
-        button_2.place(x=90, y=25 * len(self.button_list) + 24)
-
+        button.grid(row=len(self.button_list), column=1, pady=(0, 10), padx=5)
         self.label_list.append(label)
-        self.button_list.append(button_1)
-        self.button_list.append(button_2)
+        self.button_list.append(button)
 
     def remove_item(self, item):
         for label, button in zip(self.label_list, self.button_list):

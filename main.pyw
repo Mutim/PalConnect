@@ -1,4 +1,4 @@
-from core.app import ServerConnectionScreen
+from core.login import ServerConnectionScreen
 
 
 def main():

@@ -4,11 +4,10 @@ import asyncio
 import concurrent.futures
 
 import customtkinter
-
-from utils.pal_exceptions import *
 import rcon
 from rcon.source.client import Client
 
+from utils.pal_exceptions import *
 import config
 
 __all__ = (
