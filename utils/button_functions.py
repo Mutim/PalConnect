@@ -80,10 +80,9 @@ def check_command(entry: str) -> tuple:
         return None, None
 
 
-def refresh_players_function(rcon_credentials):
-
+async def refresh_players_function(rcon_credentials):
     try:
-        result = sending(rcon_credentials, "ShowPlayers")
+        result = await sending(rcon_credentials, "ShowPlayers")
 
         if not result:
             return [("Invalid", "00000", "00000")]
@@ -94,3 +93,4 @@ def refresh_players_function(rcon_credentials):
         print(f"Error with Refresh players function: {err}")
     except Exception as err:
         print(f"Error with Refresh players function: {err}")
+

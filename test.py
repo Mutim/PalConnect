@@ -1,11 +1,13 @@
+import time
+
+"""
+Playground to test small functions
+"""
 
 
 def main():
-    response = "Yes"
-    return response
+    time.sleep(5)
 
-if __name__ == '__main__':
-    if main():
-        print("Yes")
-    else:
-        print("No")
+
+if __name__ == "__main__":
+    main()

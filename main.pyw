@@ -1,10 +1,14 @@
 from core.login import ServerConnectionScreen
+import asyncio
 
 
 def main():
     print("Starting Main Program Loop")
-    main_menu = ServerConnectionScreen()
-    main_menu.mainloop()
+
+    loop = asyncio.get_event_loop()
+    main_menu = ServerConnectionScreen(loop)
+    loop.run_forever()
+    loop.close()
 
 
 if __name__ == '__main__':

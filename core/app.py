@@ -3,6 +3,7 @@ import tkinter
 import customtkinter
 
 from utils.button_functions import *
+from utils.application_utilities import *
 from widgets.scrollable_frames import ScrollableRadiobuttonFrame
 import config
 
@@ -11,10 +12,10 @@ __all__ = (
 )
 
 
-def console_screen(screen: customtkinter.CTk, rcon_credentials: dict):
+async def console_screen(screen: customtkinter.CTk, rcon_credentials: dict):
     """Main command screen for sending RCON commands."""
 
-    players = refresh_players_function(rcon_credentials)
+    players = ["Player", "Player", "Player", "Player", "Player", "Player", "Player", "Player", "Player", "Player"]
     screen.frame.destroy()
 
     """
@@ -41,9 +42,15 @@ def console_screen(screen: customtkinter.CTk, rcon_credentials: dict):
     screen.column_1.place(x=10, y=10)
 
     screen.player_config_frame = ScrollableRadiobuttonFrame(master=screen.column_1, width=285, command=None, corner_radius=5, height=200,
-                                                            item_list=[f"item {i}" for i in players],
-                                                            label_text="ScrollableRadiobuttonFrame")
+                                                            item_list=[f"{i} Name" for i in await get_player_list(rcon_credentials)],
+                                                            label_text="Players Online")
     screen.player_config_frame.place(x=5, y=5)
+
+    screen.refresh_players_button = customtkinter.CTkButton(master=screen.column_1, width=24, text="0",
+                                                            command=lambda: rcon_query_button_function(screen, rcon_credentials),
+                                                            corner_radius=6)
+
+    screen.refresh_players_button.place(x=30, y=350)
 
     """
     Start of column_2
