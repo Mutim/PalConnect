@@ -11,29 +11,36 @@ __all__ = (
     "sending",
     "rcon_query_button_function",
     "check_command",
-    "refresh_players_function"
+    "refresh_players_function",
+    "on_button_click"
 )
 
 
-def sending(creds, command, *args):
-
+async def sending(creds, command, *args):
     loop = asyncio.get_event_loop()
 
-    async def run_sending():
-        if not loop.is_running():
-            result = loop.run_until_complete(async_send_command(creds, command, *args))
-            return result
-        else:
-            result = await async_send_command(creds, command, *args)
-            return result
-
+    # async def run_sending():
     if not loop.is_running():
-        return loop.run_until_complete(run_sending())
+        print("Starting async send command")
+        result = await async_send_command(creds, command, *args)
+        print("Ending async send command")
+        return result
     else:
-        return asyncio.create_task(run_sending())
+        start_time = time.time()
+        print("Starting async send command else")
+        result = await async_send_command(creds, command, *args)
+        end_time = time.time()
+        execution_time = end_time - start_time
+        print(f"Ending async send command else - {execution_time}s")
+        return result
+
+    # if not loop.is_running():
+    #     return loop.run_until_complete(run_sending())
+    # else:
+    #     return asyncio.create_task(run_sending())
 
 
-def rcon_query_button_function(screen, rcon_credentials):
+async def rcon_query_button_function(screen, rcon_credentials):
 
     current_time = time.time()
     local_time_struct = time.localtime(current_time)
@@ -49,7 +56,7 @@ def rcon_query_button_function(screen, rcon_credentials):
         print(f"Command: {command} Arguments: {arguments}")
 
         if command.lower() != "help":
-            result = sending(rcon_credentials, command, arguments)
+            result = await sending(rcon_credentials, command, arguments)
         else:
             result = "Server Commands\n" + "\n".join([f"{key}: {value}" for key, value in config.valid_commands.items()])
 
@@ -64,6 +71,11 @@ def rcon_query_button_function(screen, rcon_credentials):
         screen.error_label.configure(text=f"[ ERROR ]\nNo command entered. Type Help for info\n{err}")
     except Exception as err:
         screen.error_label.configure(text=f"[ ERROR ]\nUnexpected error. Please report on GitHub\n{err}")
+
+
+def on_button_click(screen, rcon_credentials):
+    # Start the async function using create_task
+    asyncio.create_task(rcon_query_button_function(screen, rcon_credentials))
 
 
 def check_command(entry: str) -> tuple:

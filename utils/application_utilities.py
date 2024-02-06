@@ -2,6 +2,7 @@ import re
 import webbrowser
 import asyncio
 import concurrent.futures
+import time as t
 
 import customtkinter
 import rcon
@@ -37,10 +38,11 @@ async def async_send_command(credentials: dict, command: str, *arguments: str) -
     port = credentials['port']
     password = credentials['password']
 
-    command, arguments = sanitize_input(command, arguments)
+    command, arguments = await sanitize_input(command, arguments)
 
     response = ""
 
+    start_time = t.time()
     def run_command():
         """
         Internal function to execute the RCON command in a separate thread.
@@ -56,6 +58,10 @@ async def async_send_command(credentials: dict, command: str, *arguments: str) -
             with Client(ipaddr, port, passwd=password) as client:
                 request = client.run(command, *arguments, encoding="ISO-8859-1", enforce_id=False)
             response = request
+
+            end_time = t.time()
+            execution_time = end_time - start_time
+            print(f"with Client takes {execution_time}s to complete")
             return response
         except rcon.exceptions.WrongPassword as err:
             print(err)
@@ -73,19 +79,25 @@ async def async_send_command(credentials: dict, command: str, *arguments: str) -
             print(f"Unhandled Exception: {err}")
             raise Exception
         finally:
+
+            end_time = t.time()
+            execution_time = end_time - start_time
+            print(f"Finally statement takes - {execution_time}s to reach")
             print("Finished Communication to Server. Closing connection")
 
-    loop = asyncio.get_event_loop()
-    with concurrent.futures.ThreadPoolExecutor() as executor:
-        try:
-            return await loop.run_in_executor(executor, run_command)
-        except asyncio.CancelledError:
-            print("Task Cancelled (outside run_in_executor)")
-
+    try:
+        start_time = t.time()
+        result = await asyncio.to_thread(run_command)
+        end_time = t.time()
+        execution_time = end_time - start_time
+        print(f"Time to execute run_command() - {execution_time}")
+        return result
+    except asyncio.CancelledError:
+        print("Task Cancelled (outside to_thread)")
     return response
 
 
-def sanitize_input(command: str, args: tuple) -> tuple:
+async def sanitize_input(command: str, args: tuple) -> tuple:
     """Sanitizes the input of the `async_send_command()` function. This is to prevent arbitrary input,
         and verify that only correct commands are being served. Handles each command differently.
 
@@ -100,15 +112,11 @@ def sanitize_input(command: str, args: tuple) -> tuple:
     - If a new command is added to config.valid_commands, a new check must be added here. This might not be the best way.
     """
     if command.lower() == "broadcast":
-        message_raw = args[0]
-        if len(message_raw) > 39:
-            message = break_message(message_raw, max_length=40, ret="\n")  # Breaks message into 40 character long strings with newlines to fit in PalWorld chat
-            message = message.replace(" ", "\u00A0")
-        else:
-            message = message_raw.replace(" ", "\u00A0")
-        message = tuple([message])
 
-        return "Broadcast", message
+        message_raw = args[0]
+        message = await break_message(message_raw, max_length=40, ret="\n")
+        message = message.replace(" ", "\u00A0")
+        return "Broadcast", (message,)
 
     elif command.lower() == "info":
         return "Info", ""
@@ -250,7 +258,7 @@ def center_window(screen: customtkinter.CTk, width: int, height: int, scale_fact
     return f"{width}x{height}+{x}+{y}"
 
 
-def break_message(message, max_length=40, ret="\n") -> str:
+async def break_message(message, max_length=40, ret="\n") -> str:
     """
     Break a message into lines, ensuring each line is no longer than the specified maximum length.
 
@@ -264,7 +272,7 @@ def break_message(message, max_length=40, ret="\n") -> str:
     """
     result = []
     current_line = ""
-
+    start_time = t.time()
     for word in message.split():
         if len(current_line) + len(word) + 1 <= max_length:
             current_line += f"{word} "
@@ -277,6 +285,9 @@ def break_message(message, max_length=40, ret="\n") -> str:
     current = ""
     for line in result:
         current = f"{current + line}{ret}"
+    end_time = t.time()
+    execution_time = end_time - start_time
+    print(f"Time to break message - {execution_time}")
     return current
 
 

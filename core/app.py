@@ -47,7 +47,7 @@ async def console_screen(screen: customtkinter.CTk, rcon_credentials: dict):
     screen.player_config_frame.place(x=5, y=5)
 
     screen.refresh_players_button = customtkinter.CTkButton(master=screen.column_1, width=24, text="0",
-                                                            command=lambda: rcon_query_button_function(screen, rcon_credentials),
+                                                            command=lambda: on_button_click(screen, rcon_credentials),
                                                             corner_radius=6)
 
     screen.refresh_players_button.place(x=30, y=350)
@@ -70,10 +70,10 @@ async def console_screen(screen: customtkinter.CTk, rcon_credentials: dict):
     screen.command_entry = customtkinter.CTkEntry(master=screen.column_2, width=469, placeholder_text='Command',
                                                   border_color=("#979DA2", "#565B5E"))
     screen.command_entry.place(x=15, y=386)
-    screen.command_entry.bind("<Return>", lambda event: rcon_query_button_function(screen, rcon_credentials))
+    screen.command_entry.bind("<Return>", lambda event: on_button_click(screen, rcon_credentials))
 
     send_button = customtkinter.CTkButton(master=screen.column_2, width=91, text="Send Command",
-                                          command=lambda: rcon_query_button_function(screen, rcon_credentials),
+                                          command=lambda: on_button_click(screen, rcon_credentials),
                                           corner_radius=6)
     send_button.place(x=489, y=386)
 
