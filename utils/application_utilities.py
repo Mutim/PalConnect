@@ -2,11 +2,11 @@ import re
 import webbrowser
 import asyncio
 import concurrent.futures
-import time as t
+from logging import getLogger
 
 import customtkinter
 import rcon
-from rcon.source.client import Client
+from rcon.source.client import Client, Packet
 
 from utils.pal_exceptions import *
 import config
@@ -16,10 +16,21 @@ __all__ = (
     "valid_input",
     "is_valid_ip",
     "center_window",
-    "break_message",
+    "format_message",
     "open_site",
     "get_player_list"
 )
+
+
+LOGGER = getLogger(__file__)
+
+
+class MyClient(Client):
+    # Palworld does not respond, so was killing the program. Have to make our own
+    def read(self):
+        with self._socket.makefile("rb") as file:
+            response = Packet.read(file)
+            return response
 
 
 async def async_send_command(credentials: dict, command: str, *arguments: str) -> str:
@@ -38,11 +49,10 @@ async def async_send_command(credentials: dict, command: str, *arguments: str) -
     port = credentials['port']
     password = credentials['password']
 
-    command, arguments = await sanitize_input(command, arguments)
+    command, arguments = sanitize_input(command, arguments)
 
     response = ""
 
-    start_time = t.time()
     def run_command():
         """
         Internal function to execute the RCON command in a separate thread.
@@ -52,16 +62,16 @@ async def async_send_command(credentials: dict, command: str, *arguments: str) -
         """
         nonlocal response
 
-        print(f"Starting Communication to Server...\nCommand: {command}\nArguments: {arguments}\n{credentials}")
+        print(f"Starting Communication to Server...\nCommand: {command}\nArguments: {arguments if arguments else 'None Provided'}\nConnecting to: {credentials['ipaddr']}:{credentials['port']}")
 
         try:
             with Client(ipaddr, port, passwd=password) as client:
                 request = client.run(command, *arguments, encoding="ISO-8859-1", enforce_id=False)
-            response = request
+                # request = Packet.make_command(command, *arguments, encoding="ISO-8859-1")
+                # client.send(request)
 
-            end_time = t.time()
-            execution_time = end_time - start_time
-            print(f"with Client takes {execution_time}s to complete")
+            print(request)
+            response = request
             return response
         except rcon.exceptions.WrongPassword as err:
             print(err)
@@ -79,25 +89,19 @@ async def async_send_command(credentials: dict, command: str, *arguments: str) -
             print(f"Unhandled Exception: {err}")
             raise Exception
         finally:
-
-            end_time = t.time()
-            execution_time = end_time - start_time
-            print(f"Finally statement takes - {execution_time}s to reach")
             print("Finished Communication to Server. Closing connection")
 
-    try:
-        start_time = t.time()
-        result = await asyncio.to_thread(run_command)
-        end_time = t.time()
-        execution_time = end_time - start_time
-        print(f"Time to execute run_command() - {execution_time}")
-        return result
-    except asyncio.CancelledError:
-        print("Task Cancelled (outside to_thread)")
+    loop = asyncio.get_event_loop()
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        try:
+            return await loop.run_in_executor(executor, run_command)
+        except asyncio.CancelledError:
+            print("Task Cancelled (outside run_in_executor)")
+
     return response
 
 
-async def sanitize_input(command: str, args: tuple) -> tuple:
+def sanitize_input(command: str, args: tuple) -> tuple:
     """Sanitizes the input of the `async_send_command()` function. This is to prevent arbitrary input,
         and verify that only correct commands are being served. Handles each command differently.
 
@@ -112,10 +116,13 @@ async def sanitize_input(command: str, args: tuple) -> tuple:
     - If a new command is added to config.valid_commands, a new check must be added here. This might not be the best way.
     """
     if command.lower() == "broadcast":
-
         message_raw = args[0]
-        message = await break_message(message_raw, max_length=40, ret="\n")
-        message = message.replace(" ", "\u00A0")
+        if len(message_raw) > 39:
+            message = format_message(message_raw, max_length=40, ret="\n")  # Breaks message into 40 character long strings with newlines to fit in PalWorld chat
+            message = message.replace(" ", "\u00A0")
+        else:
+            message = message_raw.replace(" ", "\u00A0")
+
         return "Broadcast", (message,)
 
     elif command.lower() == "info":
@@ -134,10 +141,9 @@ async def sanitize_input(command: str, args: tuple) -> tuple:
         try:
             time = int(time)
         except ValueError:
-            print("Time value could not be converted to an integer")
             return "Info", ""  # Returning info until we get a way to communicate
         message = message_split[1].replace(" ", "\u00A0")
-        message = tuple([time + message])
+        message = (time, message)
 
         return "Shutdown", message
 
@@ -175,7 +181,6 @@ async def valid_input(screen: customtkinter.CTk, credentials: dict) -> bool | st
         screen.ipaddr_entry.configure(border_color='#E53030')
         screen.error_label.configure(text=f"[ Error ]\nNot a Valid IP Address")
         valid_cred.append(False)
-        print(f"\nIP Address is invalid - {err}")
 
     try:
         b = int(credentials['port'])
@@ -185,7 +190,6 @@ async def valid_input(screen: customtkinter.CTk, credentials: dict) -> bool | st
         screen.port_entry.configure(border_color='#E53030')
         screen.error_label.configure(text=f"[ Error ]\nInvalid Port Number")
         valid_cred.append(False)
-        print(f"Invalid Port Number - {err}")
 
     if all(valid_cred):
         credentials = {
@@ -195,7 +199,7 @@ async def valid_input(screen: customtkinter.CTk, credentials: dict) -> bool | st
 
         try:
             result = await async_send_command(credentials, "Info")
-            config.welcome_text = f'Connected to PalConnect server!\n{result}\n\n________________________________________\n'
+            config.welcome_text = f'Connected to PalConnect server!\n{result}\n\n________________________________________\n\n'
             print(f"Result is: {result}")
             if result:
                 valid_cred.append(True)
@@ -238,7 +242,7 @@ async def get_player_list(credentials) -> list[tuple]:
         player_info = tuple(values)
         players_online.append(player_info)
 
-    return players_online
+    return players_online[:-1]
 
 
 def is_valid_ip(ip) -> bool:
@@ -258,7 +262,7 @@ def center_window(screen: customtkinter.CTk, width: int, height: int, scale_fact
     return f"{width}x{height}+{x}+{y}"
 
 
-async def break_message(message, max_length=40, ret="\n") -> str:
+def format_message(message, max_length=40, ret="\n") -> str:
     """
     Break a message into lines, ensuring each line is no longer than the specified maximum length.
 
@@ -272,7 +276,7 @@ async def break_message(message, max_length=40, ret="\n") -> str:
     """
     result = []
     current_line = ""
-    start_time = t.time()
+
     for word in message.split():
         if len(current_line) + len(word) + 1 <= max_length:
             current_line += f"{word} "
@@ -285,9 +289,6 @@ async def break_message(message, max_length=40, ret="\n") -> str:
     current = ""
     for line in result:
         current = f"{current + line}{ret}"
-    end_time = t.time()
-    execution_time = end_time - start_time
-    print(f"Time to break message - {execution_time}")
     return current
 
 

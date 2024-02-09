@@ -35,14 +35,15 @@ class ScrollableRadiobuttonFrame(customtkinter.CTkScrollableFrame):
         self.command = command
         self.radiobutton_variable = customtkinter.StringVar()
         self.radiobutton_list = []
-        for i, item in enumerate(item_list):
-            self.add_item(item)
+        if item_list:  # Fixed to allow empty item_list
+            for i, item in enumerate(item_list):
+                self.add_item(item)
 
     def add_item(self, item):
         radiobutton = customtkinter.CTkRadioButton(self, text=item, value=item, variable=self.radiobutton_variable)
         if self.command is not None:
             radiobutton.configure(command=self.command)
-        radiobutton.grid(row=len(self.radiobutton_list), column=0, pady=(0, 10))
+        radiobutton.grid(row=len(self.radiobutton_list), column=0, pady=(0, 10), sticky="w")  # Fixed to left align objects
         self.radiobutton_list.append(radiobutton)
 
     def remove_item(self, item):

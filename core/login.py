@@ -9,15 +9,32 @@ from utils.application_utilities import *
 from core.app import console_screen
 import config
 
+__all__ = (
+    "ServerConnectionScreen"
+)
+
 
 class ServerConnectionScreen(ctk.CTk):
 
-    def __init__(self, loop, interval=1 / 120):
+    def __init__(self):
         super().__init__()
-        self.loop = loop
-        self.protocol("WM_DELETE_WINDOW", self.close)
-        self.tasks = []
-        self.tasks.append(loop.create_task(self.updater(interval)))
+
+        self.title_text = None
+        self.error_label = None
+        self.ipaddr_entry = None
+        self.port_entry = None
+        self.password_entry = None
+        self.login_button = None
+
+        self.main_frame = None
+        self.column_1 = None
+        self.player_config_frame = None
+        self.refresh_players_button = None
+
+        self.column_2 = None
+        self.text_box = None
+        self.command_entry = None
+        self.send_button = None
 
         ctk.set_appearance_mode(config.default_theme)
         ctk.set_default_color_theme(config.custom_theme)  # Themes: config.themes
@@ -43,7 +60,10 @@ class ServerConnectionScreen(ctk.CTk):
         self.label_1 = ctk.CTkLabel(master=self, image=self.background_image, text="")
         self.label_1.pack()
 
-        # Credentials Frame
+        self.create_credentials_frame()
+
+    # Credentials Frame
+    def create_credentials_frame(self):
         self.frame = ctk.CTkFrame(
             master=self.label_1,
             width=320,
@@ -51,7 +71,7 @@ class ServerConnectionScreen(ctk.CTk):
             corner_radius=15)
         self.frame.place(relx=0.5, rely=0.5, anchor="center")
 
-        self.label_2 = ctk.CTkLabel(
+        self.title_text = ctk.CTkLabel(
             master=self.frame,
             text=" Palworld Server Info",
             font=('Expose', 20),
@@ -59,7 +79,7 @@ class ServerConnectionScreen(ctk.CTk):
             justify="center",
             compound="left",
             image=self.logo_image)
-        self.label_2.place(x=20, y=20)
+        self.title_text.place(x=20, y=20)
 
         self.error_label = ctk.CTkLabel(
             master=self.frame,
@@ -100,18 +120,6 @@ class ServerConnectionScreen(ctk.CTk):
                                        fg_color='white', text_color='black', hover_color='#AFAFAF')
         discord_button.place(x=170, y=290)
 
-    async def updater(self, interval):
-        while True:
-            self.update()
-            await asyncio.sleep(interval)
-
-    def close(self):
-        # Put close confirmation window here?
-        for task in self.tasks:
-            task.cancel()
-
-        self.loop.stop()
-        self.destroy()
 
 
 def login_button_function(screen: ctk.CTk):
@@ -148,7 +156,7 @@ async def login_handler(screen, rcon_credentials):
         }
 
         print("Can connect")
-        await console_screen(screen, rcon_credentials)
+        console_screen(screen, rcon_credentials)
     else:
         screen.login_button.configure(state="normal")
         print("Cannot connect")
