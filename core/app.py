@@ -49,7 +49,7 @@ def column_1(screen, rcon_credentials):
     screen.player_config_frame.place(x=5, y=5)
 
     screen.ban_player_button = customtkinter.CTkButton(master=screen.column_1, width=50, text="Ban Player",
-                                                       command=lambda: print("Button works"),
+                                                       command=lambda: testing(screen),
                                                        corner_radius=6)
 
     screen.ban_player_button.place(x=25, y=183)

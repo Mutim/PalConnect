@@ -242,6 +242,7 @@ async def get_player_list(credentials) -> list[tuple]:
         player_info = tuple(values)
         players_online.append(player_info)
 
+    print(f"Get Player List: {players_online}")
     return players_online[:-1]
 
 

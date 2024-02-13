@@ -15,7 +15,8 @@ __all__ = (
     "on_button_click",
     "fetch_online_players",
     "update_players",
-    "kick_player"
+    "kick_player",
+    "testing"
 )
 
 
@@ -120,16 +121,20 @@ def fetch_online_players(screen, rcon_credentials, loop):
     for player in result:
         if player not in current_players:
             current_players.append(player)
+        if player not in players_shown:
+            screen.player_config_frame.add_item(f"{player[0]} - {player[2]}")
+            players_shown.append(player)
 
     for player in players_shown:
-        if player not in current_players:
+        if player not in result:
+            screen.player_config_frame.radiobutton_variable.set("")
             players_shown.remove(player)
             screen.player_config_frame.remove_item(f"{player[0]} - {player[2]}")
 
-    for player in current_players:
-        if player not in players_shown and player in result:
-            screen.player_config_frame.add_item(f"{player[0]} - {player[2]}")
-            players_shown.append(player)
+    # for player in players_shown:
+    #     if player not in players_shown and player in result:
+    #         screen.player_config_frame.add_item(f"{player[0]} - {player[2]}")
+    #         players_shown.append(player)
     print(f"Current Players: {current_players}")
     print(f"Players Shown: {players_shown}")
     print(f"Result: {result}")
@@ -145,18 +150,29 @@ def kick_player(screen, rcon_credentials, player_info, loop):
     player_uuid = player_info.split(' - ')[1]
 
     async def run_kick_players():
-        message = format_message(f"{player_name} was kicked from the server")
-        result = await async_send_command(rcon_credentials, "KickPlayer", f"{player_uuid}")
-        await async_send_command(rcon_credentials, "Broadcast", message)
-        return result
+        try:
+            message = format_message(f"{player_name} was kicked from the server!")
+            await async_send_command(rcon_credentials, "KickPlayer", f"{player_uuid}")
+            await async_send_command(rcon_credentials, "Broadcast", message)
+            return True
 
-    if not loop.is_running():
-        result = loop.run_until_complete(run_kick_players())
-    else:
-        result = asyncio.run_coroutine_threadsafe(run_kick_players(), loop).result()
+        except Exception as err:
+            print(err)
+            return False
+
+    try:
+        loop = asyncio.get_running_loop()
+        asyncio.create_task(run_kick_players())
+    except RuntimeError:
+        loop = asyncio.get_event_loop()
+        asyncio.run_coroutine_threadsafe(run_kick_players(), loop)
 
     kicked = f"\n[ {formatted_local_time} ] - Kicked {player_name} from the server!\n"
     screen.text_box.configure(state="normal")
     screen.text_box.insert(tkinter.END, kicked)
     screen.text_box.see(tkinter.END)
     screen.text_box.configure(state="disabled")
+
+
+def testing(screen):
+    screen.player_config_frame.radiobutton_variable.set("")
